@@ -4,7 +4,11 @@ import entity.AppUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import service.*;
+import service.AuthService;
+import service.OrderService;
+import service.ProductService;
+import service.StockImportService;
+import service.SupplierService;
 
 @Controller
 public class HomeController {
@@ -30,37 +34,42 @@ public class HomeController {
     @GetMapping("/")
     public String home(Model model) {
         AppUser currentUser;
+
         try {
             currentUser = authService.getCurrentUser();
         } catch (Exception e) {
             return "redirect:/login";
         }
 
-        model.addAttribute("currentUser", currentUser);
-        productService.synchronizeProductStatistics(currentUser);
+        AppUser workspaceOwner = authService.getWorkspaceOwner(currentUser);
 
-        // Thống kê tổng quan
-        model.addAttribute("totalProducts", productService.countProducts(currentUser));
+        boolean isOwner = "OWNER".equalsIgnoreCase(currentUser.getRole());
+        boolean isEmployee = !isOwner;
+
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("workspaceOwner", workspaceOwner);
+        model.addAttribute("isOwner", isOwner);
+        model.addAttribute("isEmployee", isEmployee);
+
+        productService.synchronizeProductStatistics(workspaceOwner);
+
+        model.addAttribute("totalProducts", productService.countProducts(workspaceOwner));
         model.addAttribute("totalSuppliers", supplierService.getAllSuppliers().size());
         model.addAttribute("totalOrders", orderService.countOrders());
         model.addAttribute("totalRevenue", orderService.totalRevenue());
         model.addAttribute("totalImports", stockImportService.getAllImports().size());
 
-        // Trạng thái đơn hàng
         model.addAttribute("pendingOrders", orderService.countByStatus(OrderService.STATUS_PENDING));
         model.addAttribute("shippingOrders", orderService.countByStatus(OrderService.STATUS_SHIPPING));
         model.addAttribute("completedOrders", orderService.countByStatus(OrderService.STATUS_COMPLETED));
         model.addAttribute("cancelledOrders", orderService.countByStatus(OrderService.STATUS_CANCELLED));
 
-        // Biểu đồ
         model.addAttribute("revenueByMonth", orderService.revenueByMonth());
         model.addAttribute("orderStatusStats", orderService.orderStatusStatistics());
 
-        // Cảnh báo kho hàng
-        model.addAttribute("lowStockProducts", productService.getLowStockProducts(currentUser));
-        model.addAttribute("expiringProducts", productService.getExpiringProducts(currentUser));
+        model.addAttribute("lowStockProducts", productService.getLowStockProducts(workspaceOwner));
+        model.addAttribute("expiringProducts", productService.getExpiringProducts(workspaceOwner));
 
-        // Top sản phẩm bán chạy
         model.addAttribute("bestSellingProducts", orderService.getBestSellingProducts());
 
         return "index";

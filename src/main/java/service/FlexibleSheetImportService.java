@@ -64,6 +64,7 @@ public class FlexibleSheetImportService {
         }
 
         CSVRecord headerRow = iterator.next();
+
         List<String> headers = new ArrayList<>();
 
         for (String header : headerRow) {
@@ -85,24 +86,31 @@ public class FlexibleSheetImportService {
                               String salePriceColumn,
                               String supplierColumn,
                               String expiryDateColumn) throws Exception {
+        AppUser owner = authService.getWorkspaceOwner();
 
-        AppUser user = authService.getCurrentUser();
         List<Map<String, String>> records = readRowsAsMap(sheetUrl, gid);
 
         int count = 0;
-        productRepository.findByUserAndActiveTrue(user).forEach(product -> product.setActive(false));
+
+        List<Product> oldProducts = productRepository.findByUserAndActiveTrue(owner);
+        oldProducts.forEach(product -> product.setActive(false));
+        productRepository.saveAll(oldProducts);
 
         for (Map<String, String> row : records) {
             String name = get(row, nameColumn);
-            if (blank(name)) continue;
+
+            if (blank(name)) {
+                continue;
+            }
 
             String code = get(row, codeColumn);
+
             if (blank(code)) {
                 code = "SP-" + (count + 1);
             }
 
             Product product = productRepository
-                    .findByCodeAndUser(code, user)
+                    .findByCodeAndUser(code, owner)
                     .orElse(new Product());
 
             product.setCode(code);
@@ -115,14 +123,16 @@ public class FlexibleSheetImportService {
             product.setSalePrice(toMoney(get(row, salePriceColumn)));
             product.setExpiryDate(toDate(get(row, expiryDateColumn)));
             product.setDescription("Import linh hoạt từ Google Sheet");
-            product.setUser(user);
+            product.setUser(owner);
             product.setActive(true);
 
-            Supplier supplier = getOrCreateSupplier(get(row, supplierColumn), user);
+            Supplier supplier = getOrCreateSupplier(get(row, supplierColumn), owner);
             product.setSupplier(supplier);
+
             product.recalculateInventoryFields();
 
             productRepository.save(product);
+
             count++;
         }
 
@@ -139,20 +149,24 @@ public class FlexibleSheetImportService {
                             String productNameColumn,
                             String quantityColumn,
                             String statusColumn) throws Exception {
+        AppUser owner = authService.getWorkspaceOwner();
 
-        AppUser user = authService.getCurrentUser();
         List<Map<String, String>> records = readRowsAsMap(sheetUrl, gid);
 
         int count = 0;
-        clearOrdersForUser(user);
+
+        clearOrdersForUser(owner);
 
         for (Map<String, String> row : records) {
             String customerName = get(row, customerNameColumn);
             String productName = get(row, productNameColumn);
 
-            if (blank(customerName) || blank(productName)) continue;
+            if (blank(customerName) || blank(productName)) {
+                continue;
+            }
 
             String orderCode = get(row, orderCodeColumn);
+
             if (blank(orderCode)) {
                 orderCode = "ORD-SHEET-" + (count + 1);
             }
@@ -163,18 +177,27 @@ public class FlexibleSheetImportService {
             order.setCustomerPhone(get(row, phoneColumn));
             order.setCustomerAddress(get(row, addressColumn));
             order.setStatus(normalizeStatus(get(row, statusColumn)));
-            order.setUser(user);
+            order.setUser(owner);
 
             Order savedOrder = orderRepository.save(order);
 
             Product product = productRepository
-                    .findFirstByNameContainingIgnoreCaseAndUserAndActiveTrue(productName, user)
-                    .orElseGet(() -> createAutoProduct(productName, user));
+                    .findFirstByNameContainingIgnoreCaseAndUserAndActiveTrue(productName, owner)
+                    .orElseGet(() -> createAutoProduct(productName, owner));
 
             int quantity = toInt(get(row, quantityColumn));
-            if (quantity <= 0) quantity = 1;
+
+            if (quantity <= 0) {
+                quantity = 1;
+            }
+
             if (product.getQuantity() < quantity) {
-                productService.increaseStock(product, quantity - product.getQuantity(), product.getImportPrice(), product.getExpiryDate());
+                productService.increaseStock(
+                        product,
+                        quantity - product.getQuantity(),
+                        product.getImportPrice(),
+                        product.getExpiryDate()
+                );
             }
 
             BigDecimal unitPrice = product.getSalePrice() == null
@@ -191,9 +214,11 @@ public class FlexibleSheetImportService {
             item.setSubtotal(subtotal);
 
             orderItemRepository.save(item);
+
             productService.decreaseStockForSale(product, quantity);
 
             savedOrder.setTotalAmount(subtotal);
+
             orderRepository.save(savedOrder);
 
             count++;
@@ -212,6 +237,7 @@ public class FlexibleSheetImportService {
                 .parse(reader);
 
         Iterator<CSVRecord> iterator = parser.iterator();
+
         List<Map<String, String>> result = new ArrayList<>();
 
         if (!iterator.hasNext()) {
@@ -219,6 +245,7 @@ public class FlexibleSheetImportService {
         }
 
         CSVRecord headerRow = iterator.next();
+
         List<String> headers = new ArrayList<>();
         List<Integer> validIndexes = new ArrayList<>();
 
@@ -233,11 +260,13 @@ public class FlexibleSheetImportService {
 
         while (iterator.hasNext()) {
             CSVRecord dataRow = iterator.next();
+
             Map<String, String> map = new LinkedHashMap<>();
 
             for (int i = 0; i < headers.size(); i++) {
                 int realIndex = validIndexes.get(i);
                 String value = realIndex < dataRow.size() ? dataRow.get(realIndex) : "";
+
                 map.put(headers.get(i), value == null ? "" : value.trim());
             }
 
@@ -269,27 +298,30 @@ public class FlexibleSheetImportService {
         }
     }
 
-    private Supplier getOrCreateSupplier(String name, AppUser user) {
+    private Supplier getOrCreateSupplier(String name, AppUser owner) {
         if (blank(name)) {
             name = "Chưa xác định";
         }
 
         String supplierName = name;
 
-        return supplierRepository.findByNameAndUser(supplierName, user)
+        return supplierRepository.findByNameAndUser(supplierName, owner)
                 .orElseGet(() -> {
                     Supplier supplier = new Supplier();
+
                     supplier.setName(supplierName);
                     supplier.setPhone("");
                     supplier.setEmail("");
                     supplier.setAddress("");
-                    supplier.setUser(user);
+                    supplier.setUser(owner);
+
                     return supplierRepository.save(supplier);
                 });
     }
 
-    private Product createAutoProduct(String productName, AppUser user) {
+    private Product createAutoProduct(String productName, AppUser owner) {
         Product product = new Product();
+
         product.setCode("AUTO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         product.setName(productName);
         product.setCategory("Mỹ phẩm");
@@ -299,27 +331,34 @@ public class FlexibleSheetImportService {
         product.setImportPrice(BigDecimal.ZERO);
         product.setSalePrice(BigDecimal.ZERO);
         product.setDescription("Tự tạo từ Sheet đơn hàng");
-        product.setUser(user);
+        product.setUser(owner);
         product.setActive(true);
+
         product.recalculateInventoryFields();
 
         return productRepository.save(product);
     }
 
-    private void clearOrdersForUser(AppUser user) {
-        List<Order> orders = orderRepository.findByUserOrderByIdDesc(user);
+    private void clearOrdersForUser(AppUser owner) {
+        List<Order> orders = orderRepository.findByUserOrderByIdDesc(owner);
+
         for (Order order : orders) {
             if (!OrderService.STATUS_CANCELLED.equals(order.getStatus())) {
                 for (OrderItem item : order.getItems()) {
-                    productService.restoreStockFromSale(item.getProduct(), item.getQuantity() == null ? 0 : item.getQuantity());
+                    int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+                    productService.restoreStockFromSale(item.getProduct(), quantity);
                 }
             }
+
             orderRepository.delete(order);
         }
     }
 
     private String get(Map<String, String> row, String column) {
-        if (blank(column)) return "";
+        if (blank(column)) {
+            return "";
+        }
+
         return row.getOrDefault(column, "").trim();
     }
 
@@ -329,13 +368,17 @@ public class FlexibleSheetImportService {
 
     private int toInt(String value) {
         try {
-            if (blank(value)) return 0;
+            if (blank(value)) {
+                return 0;
+            }
 
             value = value
                     .replace(",", ".")
                     .replaceAll("[^0-9.\\-]", "");
 
-            if (blank(value)) return 0;
+            if (blank(value)) {
+                return 0;
+            }
 
             return (int) Math.round(Double.parseDouble(value));
         } catch (Exception e) {
@@ -345,7 +388,9 @@ public class FlexibleSheetImportService {
 
     private BigDecimal toMoney(String value) {
         try {
-            if (blank(value)) return BigDecimal.ZERO;
+            if (blank(value)) {
+                return BigDecimal.ZERO;
+            }
 
             value = value
                     .replace("₩", "")
@@ -355,7 +400,9 @@ public class FlexibleSheetImportService {
                     .replace(",", "")
                     .replaceAll("[^0-9]", "");
 
-            if (blank(value)) return BigDecimal.ZERO;
+            if (blank(value)) {
+                return BigDecimal.ZERO;
+            }
 
             return new BigDecimal(value);
         } catch (Exception e) {
@@ -365,7 +412,9 @@ public class FlexibleSheetImportService {
 
     private LocalDate toDate(String value) {
         try {
-            if (blank(value)) return null;
+            if (blank(value)) {
+                return null;
+            }
 
             value = value.trim();
 
@@ -389,13 +438,23 @@ public class FlexibleSheetImportService {
     }
 
     private String normalizeStatus(String status) {
-        if (blank(status)) return OrderService.STATUS_PENDING;
+        if (blank(status)) {
+            return OrderService.STATUS_PENDING;
+        }
 
         String s = status.toLowerCase();
 
-        if (s.contains("hủy") || s.contains("huỷ")) return OrderService.STATUS_CANCELLED;
-        if (s.contains("giao") || s.contains("hoàn thành")) return OrderService.STATUS_DELIVERED;
-        if (s.contains("xác nhận")) return OrderService.STATUS_PENDING;
+        if (s.contains("hủy") || s.contains("huỷ")) {
+            return OrderService.STATUS_CANCELLED;
+        }
+
+        if (s.contains("giao") || s.contains("hoàn thành")) {
+            return OrderService.STATUS_DELIVERED;
+        }
+
+        if (s.contains("xác nhận")) {
+            return OrderService.STATUS_PENDING;
+        }
 
         return OrderService.STATUS_PENDING;
     }
