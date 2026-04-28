@@ -2,159 +2,325 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>SmartInventory</title>
+    <title>SmartInventory | Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
-<body class="dashboard-bg">
+<body class="dashboard-bg"
+      th:with="loginUser=${currentUser != null ? currentUser : session.currentUser}">
+
 <div class="dashboard-layout">
+
+    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="brand-box">
             <div class="brand-logo">SI</div>
+
             <div>
                 <h4>SmartInventory</h4>
-                <p>Kho & bán hàng</p>
+                <p>Kho &amp; bán hàng</p>
             </div>
         </div>
 
         <nav class="side-menu">
-            <a th:href="@{/}" class="active">Dashboard</a>
-            <a th:href="@{/products}">Sản phẩm</a>
-            <a th:href="@{/orders}">Đơn hàng</a>
-            <a th:href="@{/suppliers}">Nhà cung cấp</a>
-            <a th:href="@{/imports}">Nhập hàng</a>
-            <a th:href="@{/shop-profile}">Cấu hình hóa đơn</a>
-            <a th:href="@{/sheet/flex-import}">Import Google Sheet</a>
-            <a th:href="@{/logout}" class="logout-link">Đăng xuất</a>
+            <a th:href="@{/}" class="active">
+                📊 Dashboard
+            </a>
+
+            <a th:href="@{/products}">
+                📦 Sản phẩm
+            </a>
+
+            <a th:href="@{/orders}">
+                🧾 Đơn hàng
+            </a>
+
+            <a th:href="@{/suppliers}">
+                🏢 Nhà cung cấp
+            </a>
+
+            <a th:href="@{/imports}">
+                ⬇️ Nhập hàng
+            </a>
+
+            <!-- Chỉ Owner mới thấy cấu hình hóa đơn -->
+            <a th:if="${isOwner == true
+                       or (loginUser != null
+                           and loginUser.role != null
+                           and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
+                                or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
+                                or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
+               th:href="@{/shop-profile}">
+                🏪 Cấu hình hóa đơn
+            </a>
+
+            <a th:href="@{/sheet/flex-import}">
+                📄 Import Google Sheet
+            </a>
+
+            <!-- Chỉ Owner mới thấy quản lý tài khoản -->
+            <a th:if="${isOwner == true
+                       or (loginUser != null
+                           and loginUser.role != null
+                           and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
+                                or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
+                                or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
+               th:href="@{/account}">
+                👥 Quản lý tài khoản
+            </a>
+
+            <a th:href="@{/account/change-password}">
+                🔐 Đổi mật khẩu
+            </a>
+
+            <a th:href="@{/account/delete-my-account}">
+                ⚠️ Xóa tài khoản
+            </a>
+
+            <a th:href="@{/logout}" class="logout-link">
+                🚪 Đăng xuất
+            </a>
         </nav>
     </aside>
 
+    <!-- MAIN CONTENT -->
     <main class="content">
+
+        <!-- TOPBAR -->
         <div class="topbar">
             <div>
                 <h1>Dashboard</h1>
-                <p>Xin chào, <b th:text="${currentUser.fullName}">User</b></p>
+
+                <p class="mb-1">
+                    Xin chào,
+                    <b th:text="${loginUser != null && loginUser.fullName != null ? loginUser.fullName : 'User'}">
+                        User
+                    </b>
+
+                    <span class="badge bg-primary"
+                          th:if="${isOwner == true
+                                  or (loginUser != null
+                                      and loginUser.role != null
+                                      and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
+                                           or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
+                                           or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}">
+                        Owner
+                    </span>
+
+                    <span class="badge bg-secondary"
+                          th:if="${isEmployee == true
+                                  or (loginUser != null
+                                      and loginUser.role != null
+                                      and !(#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
+                                            or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
+                                            or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}">
+                        Employee
+                    </span>
+                </p>
+
+                <p class="text-muted mb-0" th:if="${workspaceOwner != null}">
+                    Web/Kho của Owner:
+                    <b th:text="${workspaceOwner.fullName}">
+                        Owner
+                    </b>
+                </p>
             </div>
+
             <div class="header-actions">
-                <a th:href="@{/products/create}" class="btn btn-primary">Thêm sản phẩm</a>
-                <a th:href="@{/orders/create}" class="btn btn-light btn-soft">Tạo đơn</a>
+                <a th:href="@{/products/create}" class="btn btn-primary">
+                    + Thêm sản phẩm
+                </a>
+
+                <a th:href="@{/orders/create}" class="btn btn-light btn-soft">
+                    + Tạo đơn
+                </a>
             </div>
         </div>
 
+        <!-- FLASH MESSAGE -->
         <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
+        <!-- HERO REVENUE -->
         <section class="hero-card">
             <div>
                 <span>Doanh thu hoàn thành</span>
-                <h2 th:text="${#numbers.formatDecimal(totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</h2>
-                <p>Đơn đã giao hoặc hoàn thành</p>
+
+                <h2 th:text="${#numbers.formatDecimal(totalRevenue != null ? totalRevenue : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                    0 đ
+                </h2>
+
+                <p>Doanh thu từ các đơn đã giao hoặc hoàn thành.</p>
             </div>
         </section>
 
+        <!-- STATISTICS -->
         <section class="stat-grid">
             <div class="stat-card">
-                <p>Tổng sản phẩm</p>
-                <h3 th:text="${totalProducts}">0</h3>
+                <p>📦 Tổng sản phẩm</p>
+                <h3 th:text="${totalProducts != null ? totalProducts : 0}">0</h3>
             </div>
+
             <div class="stat-card">
-                <p>Nhà cung cấp</p>
-                <h3 th:text="${totalSuppliers}">0</h3>
+                <p>🏢 Nhà cung cấp</p>
+                <h3 th:text="${totalSuppliers != null ? totalSuppliers : 0}">0</h3>
             </div>
+
             <div class="stat-card">
-                <p>Đơn hàng</p>
-                <h3 th:text="${totalOrders}">0</h3>
+                <p>🧾 Đơn hàng</p>
+                <h3 th:text="${totalOrders != null ? totalOrders : 0}">0</h3>
             </div>
+
             <div class="stat-card">
-                <p>Lượt nhập</p>
-                <h3 th:text="${totalImports}">0</h3>
+                <p>⬇️ Lượt nhập</p>
+                <h3 th:text="${totalImports != null ? totalImports : 0}">0</h3>
             </div>
         </section>
 
+        <!-- WARNINGS -->
         <section class="warning-grid">
+
+            <!-- LOW STOCK PRODUCTS -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hàng</h5>
-                    <a th:href="@{/products(stockStatus='LOW_STOCK')}">Xem</a>
+                    <a th:href="@{/products(stockStatus='LOW_STOCK')}">
+                        Xem tất cả
+                    </a>
                 </div>
 
-                <div th:if="${#lists.isEmpty(lowStockProducts)}" class="empty-text">
+                <div th:if="${lowStockProducts == null or #lists.isEmpty(lowStockProducts)}"
+                     class="empty-text">
                     Không có sản phẩm tồn kho thấp.
                 </div>
 
-                <table th:if="${!#lists.isEmpty(lowStockProducts)}" class="table table-hover">
-                    <thead>
-                    <tr>
-                        <th>Sản phẩm</th>
-                        <th>Tồn</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="p : ${lowStockProducts}">
-                        <td th:text="${p.name}">Tên sản phẩm</td>
-                        <td><span class="badge bg-warning text-dark" th:text="${p.inventoryQuantity}">0</span></td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive"
+                     th:if="${lowStockProducts != null and !#lists.isEmpty(lowStockProducts)}">
+
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th>Tồn</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr th:each="p : ${lowStockProducts}">
+                            <td th:text="${p.name}">
+                                Tên sản phẩm
+                            </td>
+
+                            <td>
+                                <span class="badge bg-warning text-dark"
+                                      th:text="${p.inventoryQuantity}">
+                                    0
+                                </span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </div>
             </div>
 
+            <!-- EXPIRING PRODUCTS -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hạn</h5>
-                    <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">Xem</a>
+                    <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">
+                        Xem tất cả
+                    </a>
                 </div>
 
-                <div th:if="${#lists.isEmpty(expiringProducts)}" class="empty-text">
+                <div th:if="${expiringProducts == null or #lists.isEmpty(expiringProducts)}"
+                     class="empty-text">
                     Không có sản phẩm sắp hết hạn trong 30 ngày.
                 </div>
 
-                <table th:if="${!#lists.isEmpty(expiringProducts)}" class="table table-hover">
-                    <thead>
-                    <tr>
-                        <th>Sản phẩm</th>
-                        <th>Hạn sử dụng</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="p : ${expiringProducts}">
-                        <td th:text="${p.name}">Tên sản phẩm</td>
-                        <td><span class="badge bg-warning text-dark" th:text="${p.expiryDate}">date</span></td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive"
+                     th:if="${expiringProducts != null and !#lists.isEmpty(expiringProducts)}">
+
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th>Hạn sử dụng</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr th:each="p : ${expiringProducts}">
+                            <td th:text="${p.name}">
+                                Tên sản phẩm
+                            </td>
+
+                            <td>
+                                <span class="badge bg-warning text-dark"
+                                      th:text="${p.expiryDate}">
+                                    date
+                                </span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </div>
             </div>
+
         </section>
 
+        <!-- BEST SELLING PRODUCTS -->
         <section class="panel-card">
             <div class="panel-header">
                 <h5>Top sản phẩm bán chạy</h5>
-                <a th:href="@{/orders}">Xem đơn hàng</a>
+                <a th:href="@{/orders}">
+                    Xem đơn hàng
+                </a>
             </div>
 
-            <div th:if="${#lists.isEmpty(bestSellingProducts)}" class="empty-text">
+            <div th:if="${bestSellingProducts == null or #lists.isEmpty(bestSellingProducts)}"
+                 class="empty-text">
                 Chưa có dữ liệu bán hàng.
             </div>
 
-            <table th:if="${!#lists.isEmpty(bestSellingProducts)}" class="table table-hover">
-                <thead>
-                <tr>
-                    <th>Sản phẩm</th>
-                    <th>Đã bán</th>
-                    <th>doanh thu</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="item : ${bestSellingProducts}">
-                    <td th:text="${item[0]}">Tên sản phẩm</td>
-                    <td><span class="badge bg-success" th:text="${item[1]}">0</span></td>
-                    <td th:text="${#numbers.formatDecimal(item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
-                </tr>
-                </tbody>
-            </table>
+            <div class="table-responsive"
+                 th:if="${bestSellingProducts != null and !#lists.isEmpty(bestSellingProducts)}">
+
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Đã bán</th>
+                        <th>Doanh thu</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr th:each="item : ${bestSellingProducts}">
+                        <td th:text="${item[0]}">
+                            Tên sản phẩm
+                        </td>
+
+                        <td>
+                            <span class="badge bg-success" th:text="${item[1]}">
+                                0
+                            </span>
+                        </td>
+
+                        <td th:text="${#numbers.formatDecimal(item[2] != null ? item[2] : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                            0 đ
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+            </div>
         </section>
+
     </main>
 </div>
 </body>

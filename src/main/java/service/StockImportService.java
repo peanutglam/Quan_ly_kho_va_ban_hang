@@ -31,18 +31,36 @@ public class StockImportService {
     }
 
     public List<StockImport> getAllImports() {
-        return stockImportRepository.findByUserOrderByIdDesc(authService.getCurrentUser());
+        AppUser owner = authService.getWorkspaceOwner();
+        return stockImportRepository.findByUserOrderByIdDesc(owner);
     }
 
     @Transactional
-    public void createImport(Long productId, Long supplierId, Integer quantity, BigDecimal importPrice, LocalDate expiryDate, String note) {
-        AppUser user = authService.getCurrentUser();
-        if (productId == null) throw new IllegalArgumentException("Vui lòng chọn sản phẩm");
-        if (supplierId == null) throw new IllegalArgumentException("Vui lòng chọn nhà cung cấp");
-        if (quantity == null || quantity <= 0) throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
-        if (importPrice == null || importPrice.signum() < 0) throw new IllegalArgumentException("Giá nhập không hợp lệ");
+    public void createImport(Long productId,
+                             Long supplierId,
+                             Integer quantity,
+                             BigDecimal importPrice,
+                             LocalDate expiryDate,
+                             String note) {
+        AppUser owner = authService.getWorkspaceOwner();
 
-        Product product = productService.getById(productId, user);
+        if (productId == null) {
+            throw new IllegalArgumentException("Vui lòng chọn sản phẩm");
+        }
+
+        if (supplierId == null) {
+            throw new IllegalArgumentException("Vui lòng chọn nhà cung cấp");
+        }
+
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
+        }
+
+        if (importPrice == null || importPrice.signum() < 0) {
+            throw new IllegalArgumentException("Giá nhập không hợp lệ");
+        }
+
+        Product product = productService.getById(productId, owner);
         Supplier supplier = supplierService.getSupplierById(supplierId);
 
         StockImport stockImport = new StockImport();
@@ -52,7 +70,8 @@ public class StockImportService {
         stockImport.setImportPrice(importPrice);
         stockImport.setExpiryDate(expiryDate);
         stockImport.setNote(note);
-        stockImport.setUser(user);
+        stockImport.setUser(owner);
+
         stockImportRepository.save(stockImport);
 
         productService.increaseStock(product, quantity, importPrice, expiryDate);
