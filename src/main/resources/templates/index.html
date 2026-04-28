@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartInventory</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="dashboard-bg">
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="brand-box">
+            <div class="brand-logo">SI</div>
+            <div>
+                <h4>SmartInventory</h4>
+                <p>Kho & bán hàng</p>
+            </div>
+        </div>
+
+        <nav class="side-menu">
+            <a th:href="@{/}" class="active">Dashboard</a>
+            <a th:href="@{/products}">Sản phẩm</a>
+            <a th:href="@{/orders}">Đơn hàng</a>
+            <a th:href="@{/suppliers}">Nhà cung cấp</a>
+            <a th:href="@{/imports}">Nhập hàng</a>
+            <a th:href="@{/shop-profile}">Cấu hình hóa đơn</a>
+            <a th:href="@{/sheet/flex-import}">Import Google Sheet</a>
+            <a th:href="@{/logout}" class="logout-link">Đăng xuất</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="topbar">
+            <div>
+                <h1>Dashboard</h1>
+                <p>Xin chào, <b th:text="${currentUser.fullName}">User</b></p>
+            </div>
+            <div class="header-actions">
+                <a th:href="@{/products/create}" class="btn btn-primary">Thêm sản phẩm</a>
+                <a th:href="@{/orders/create}" class="btn btn-light btn-soft">Tạo đơn</a>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <section class="hero-card">
+            <div>
+                <span>Doanh thu hoàn thành</span>
+                <h2 th:text="${#numbers.formatDecimal(totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</h2>
+                <p>Đơn đã giao hoặc hoàn thành</p>
+            </div>
+        </section>
+
+        <section class="stat-grid">
+            <div class="stat-card">
+                <p>Tổng sản phẩm</p>
+                <h3 th:text="${totalProducts}">0</h3>
+            </div>
+            <div class="stat-card">
+                <p>Nhà cung cấp</p>
+                <h3 th:text="${totalSuppliers}">0</h3>
+            </div>
+            <div class="stat-card">
+                <p>Đơn hàng</p>
+                <h3 th:text="${totalOrders}">0</h3>
+            </div>
+            <div class="stat-card">
+                <p>Lượt nhập</p>
+                <h3 th:text="${totalImports}">0</h3>
+            </div>
+        </section>
+
+        <section class="warning-grid">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h5>Sản phẩm sắp hết hàng</h5>
+                    <a th:href="@{/products(stockStatus='LOW_STOCK')}">Xem</a>
+                </div>
+
+                <div th:if="${#lists.isEmpty(lowStockProducts)}" class="empty-text">
+                    Không có sản phẩm tồn kho thấp.
+                </div>
+
+                <table th:if="${!#lists.isEmpty(lowStockProducts)}" class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Tồn</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${lowStockProducts}">
+                        <td th:text="${p.name}">Tên sản phẩm</td>
+                        <td><span class="badge bg-warning text-dark" th:text="${p.inventoryQuantity}">0</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h5>Sản phẩm sắp hết hạn</h5>
+                    <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">Xem</a>
+                </div>
+
+                <div th:if="${#lists.isEmpty(expiringProducts)}" class="empty-text">
+                    Không có sản phẩm sắp hết hạn trong 30 ngày.
+                </div>
+
+                <table th:if="${!#lists.isEmpty(expiringProducts)}" class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Hạn sử dụng</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${expiringProducts}">
+                        <td th:text="${p.name}">Tên sản phẩm</td>
+                        <td><span class="badge bg-warning text-dark" th:text="${p.expiryDate}">date</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel-card">
+            <div class="panel-header">
+                <h5>Top sản phẩm bán chạy</h5>
+                <a th:href="@{/orders}">Xem đơn hàng</a>
+            </div>
+
+            <div th:if="${#lists.isEmpty(bestSellingProducts)}" class="empty-text">
+                Chưa có dữ liệu bán hàng.
+            </div>
+
+            <table th:if="${!#lists.isEmpty(bestSellingProducts)}" class="table table-hover">
+                <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>Đã bán</th>
+                    <th>doanh thu</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${bestSellingProducts}">
+                    <td th:text="${item[0]}">Tên sản phẩm</td>
+                    <td><span class="badge bg-success" th:text="${item[1]}">0</span></td>
+                    <td th:text="${#numbers.formatDecimal(item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

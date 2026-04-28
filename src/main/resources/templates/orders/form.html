@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Tạo đơn hàng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="app-bg">
+<div class="page-container">
+  <div class="page-top-actions">
+    <a class="btn btn-light btn-soft" th:href="@{/orders}">← Về danh sách</a>
+  </div>
+
+  <section class="page-card">
+    <div class="page-header">
+      <div>
+        <h2>Tạo đơn hàng online</h2>
+        <p>Chọn sản phẩm, hệ thống tự tính tổng tiền và cập nhật tồn kho</p>
+      </div>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/orders/create}" method="post" id="orderForm">
+      <div class="form-section-title">Khách hàng</div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label">Tên khách hàng</label>
+          <input type="text" class="form-control" name="customerName" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Số điện thoại</label>
+          <input type="text" class="form-control" name="customerPhone" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Địa chỉ</label>
+          <input type="text" class="form-control" name="customerAddress">
+        </div>
+      </div>
+
+      <div class="form-section-title">Sản phẩm</div>
+      <div th:if="${#lists.isEmpty(products)}" class="alert alert-warning">
+        Chưa có sản phẩm còn hoạt động để tạo đơn hàng.
+      </div>
+
+      <div class="order-line row g-3 mb-3" th:each="i : ${#numbers.sequence(1,5)}">
+        <div class="col-md-7">
+          <select class="form-select product-select" name="productIds">
+            <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+            <option th:each="p : ${products}"
+                    th:value="${p.id}"
+                    th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
+                    th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')}">
+            </option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <input type="number" class="form-control quantity-input" name="quantities" min="0" placeholder="SL">
+        </div>
+
+        <div class="col-md-3">
+          <input type="text" class="form-control line-total" value="0" disabled>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <span>Tổng bill</span>
+        <strong id="orderTotal">0 đ</strong>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit" th:disabled="${#lists.isEmpty(products)}">Lưu đơn hàng</button>
+        <a class="btn btn-light btn-soft" th:href="@{/orders}">Hủy</a>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+  function parseMoney(value) {
+    const number = Number(value || 0);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+  }
+
+  function updateOrderTotal() {
+    let total = 0;
+    document.querySelectorAll('.order-line').forEach((line) => {
+      const select = line.querySelector('.product-select');
+      const quantityInput = line.querySelector('.quantity-input');
+      const selected = select.options[select.selectedIndex];
+      const price = parseMoney(selected ? selected.dataset.price : 0);
+      const quantity = parseInt(quantityInput.value || '0', 10);
+      const lineTotal = price * Math.max(quantity, 0);
+      line.querySelector('.line-total').value = formatMoney(lineTotal);
+      total += lineTotal;
+    });
+    document.getElementById('orderTotal').textContent = formatMoney(total);
+  }
+
+  document.querySelectorAll('.product-select, .quantity-input').forEach((element) => {
+    element.addEventListener('change', updateOrderTotal);
+    element.addEventListener('input', updateOrderTotal);
+  });
+  updateOrderTotal();
+</script>
+</body>
+</html>
