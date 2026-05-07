@@ -36,9 +36,7 @@ public class GlobalModelAttribute {
     public boolean isOwner() {
         try {
             AppUser currentUser = authService.getCurrentUser();
-            return currentUser != null
-                    && currentUser.getRole() != null
-                    && "OWNER".equalsIgnoreCase(currentUser.getRole());
+            return currentUser != null && isOwnerRole(currentUser.getRole());
         } catch (Exception e) {
             return false;
         }
@@ -48,11 +46,23 @@ public class GlobalModelAttribute {
     public boolean isEmployee() {
         try {
             AppUser currentUser = authService.getCurrentUser();
-            return currentUser != null
-                    && currentUser.getRole() != null
-                    && !"OWNER".equalsIgnoreCase(currentUser.getRole());
+            return currentUser != null && !isOwnerRole(currentUser.getRole());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private boolean isOwnerRole(String role) {
+        if (role == null || role.isBlank()) {
+            return false;
+        }
+
+        String value = role.trim().toUpperCase();
+
+        if (value.startsWith("ROLE_")) {
+            value = value.substring(5);
+        }
+
+        return "OWNER".equals(value) || "ADMIN".equals(value);
     }
 }

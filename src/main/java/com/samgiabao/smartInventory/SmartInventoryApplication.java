@@ -15,3 +15,4 @@ public class SmartInventoryApplication {
 		SpringApplication.run(SmartInventoryApplication.class, args);
 	}
 }
+//repo

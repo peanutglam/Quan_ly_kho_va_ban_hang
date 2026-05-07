@@ -17,15 +17,14 @@
     <div>
       <h2>Quản lý tài khoản</h2>
       <p>
-        Web của Owner:
-        <b th:text="${workspaceOwner.fullName}">Owner</b>.
-        Chỉ Owner mới tạo được Employee cho web này.
+        Owner là tài khoản quản trị chính của cửa hàng.
+        Owner có quyền tạo và quản lý tài khoản nhân viên.
       </p>
     </div>
 
     <div class="header-actions">
       <a th:href="@{/}" class="btn btn-light btn-soft">Dashboard</a>
-      <a th:href="@{/account/create}" class="btn btn-primary">Thêm Employee</a>
+      <a th:href="@{/account/create}" class="btn btn-primary">Thêm nhân viên</a>
     </div>
   </div>
 
@@ -43,8 +42,7 @@
           <th>Tên đăng nhập</th>
           <th>Email</th>
           <th>SĐT</th>
-          <th>Loại tài khoản</th>
-          <th>Thuộc web Owner</th>
+          <th>Vai trò</th>
           <th>Trạng thái</th>
           <th class="text-end">Thao tác</th>
         </tr>
@@ -56,48 +54,60 @@
 
           <td>
             <b th:text="${u.fullName}">Tên</b>
-            <span th:if="${currentUser != null and currentUser.id == u.id}" class="badge bg-info ms-1">
-              Bạn
-            </span>
+
+            <span th:if="${currentUser != null and currentUser.id == u.id}"
+                  class="badge bg-info ms-1">
+                            Bạn
+                        </span>
           </td>
 
           <td th:text="${u.username}">username</td>
-          <td th:text="${u.email != null ? u.email : '-'}">email</td>
-          <td th:text="${u.phone != null ? u.phone : '-'}">phone</td>
 
-          <td>
-            <span th:if="${u.ownerAccount}" class="badge bg-primary" th:text="${u.roleDisplayName}">
-              Owner
-            </span>
+          <td th:text="${u.email != null and !#strings.isEmpty(u.email) ? u.email : '-'}">
+            email
+          </td>
 
-            <span th:unless="${u.ownerAccount}" class="badge bg-secondary" th:text="${u.roleDisplayName}">
-              Employee
-            </span>
+          <td th:text="${u.phone != null and !#strings.isEmpty(u.phone) ? u.phone : '-'}">
+            phone
           </td>
 
           <td>
-            <span th:if="${u.ownerAccount}">Chính web này</span>
-            <span th:unless="${u.ownerAccount}" th:text="${u.owner != null ? u.owner.fullName : 'Chưa gắn Owner'}">
-              Owner
-            </span>
+                        <span th:if="${u.ownerAccount}"
+                              class="badge bg-primary"
+                              th:text="${u.roleDisplayName}">
+                            Owner
+                        </span>
+
+            <span th:unless="${u.ownerAccount}"
+                  class="badge bg-secondary"
+                  th:text="${u.roleDisplayName}">
+                            Nhân viên
+                        </span>
           </td>
 
           <td>
-            <span th:if="${u.active}" class="badge bg-success">Hoạt động</span>
-            <span th:unless="${u.active}" class="badge bg-danger">Đã khóa/Xóa</span>
+                        <span th:if="${u.active}" class="badge bg-success">
+                            Hoạt động
+                        </span>
+
+            <span th:unless="${u.active}" class="badge bg-danger">
+                            Đã khóa
+                        </span>
           </td>
 
           <td class="text-end">
-            <span th:if="${u.ownerAccount}" class="text-muted small">Owner</span>
+                        <span th:if="${u.ownerAccount}" class="text-muted small">
+                            Tài khoản chính
+                        </span>
 
             <form th:if="${!u.ownerAccount}"
                   th:action="@{/account/delete/{id}(id=${u.id})}"
                   method="post"
                   class="d-inline"
-                  onsubmit="return confirm('Bạn chắc chắn muốn khóa/xóa Employee này khỏi web của bạn?');">
+                  onsubmit="return confirm('Bạn chắc chắn muốn khóa tài khoản nhân viên này?');">
 
               <button type="submit" class="btn btn-sm btn-danger">
-                Xóa Employee
+                Khóa tài khoản
               </button>
             </form>
           </td>
@@ -111,10 +121,6 @@
   <div class="mt-3 d-flex gap-2">
     <a th:href="@{/account/change-password}" class="btn btn-outline-secondary">
       Đổi mật khẩu
-    </a>
-
-    <a th:href="@{/account/delete-my-account}" class="btn btn-outline-danger">
-      Xóa tài khoản của tôi
     </a>
   </div>
 
