@@ -1,6 +1,5 @@
 package controller;
 
-import entity.AppUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -20,89 +19,57 @@ public class AuthController {
     }
 
     @GetMapping("/login")
-    public String loginForm(HttpServletRequest request, Model model) {
+    public String loginForm(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
 
         if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
             return "redirect:/";
         }
 
-        model.addAttribute("accountType", AuthService.ACCOUNT_TYPE_OWNER);
-
         return "auth/login";
     }
 
     @PostMapping("/login")
-    public String login(@RequestParam(defaultValue = AuthService.ACCOUNT_TYPE_OWNER) String accountType,
-                        @RequestParam(required = false) String ownerUsername,
-                        @RequestParam(required = false) String ownerPassword,
-                        @RequestParam(required = false) String employeeUsername,
-                        @RequestParam(required = false) String employeePassword,
+    public String login(@RequestParam(required = false) String username,
+                        @RequestParam(required = false) String password,
                         Model model) {
         try {
-            String username;
-            String password;
-
-            if (AuthService.ACCOUNT_TYPE_EMPLOYEE.equalsIgnoreCase(accountType)) {
-                username = employeeUsername;
-                password = employeePassword;
-            } else {
-                username = ownerUsername;
-                password = ownerPassword;
-                accountType = AuthService.ACCOUNT_TYPE_OWNER;
-            }
-
-            authService.login(username, password, accountType);
-
+            authService.login(username, password);
             return "redirect:/";
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("accountType", accountType);
-
-            /*
-             * Không truyền lại username/password ra giao diện
-             * để tránh form tự hiện lại tài khoản cũ.
-             */
             return "auth/login";
         }
     }
 
+    /*
+     * Không cho đăng ký Owner công khai.
+     * Owner là tài khoản được cấp sẵn khi triển khai ứng dụng.
+     */
     @GetMapping("/register")
-    public String registerForm(Model model) {
-        if (!model.containsAttribute("user")) {
-            model.addAttribute("user", new AppUser());
-        }
+    public String registerDisabled(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute(
+                "errorMessage",
+                "Hệ thống không hỗ trợ đăng ký công khai. Tài khoản Owner được cấp sẵn khi triển khai ứng dụng."
+        );
 
-        return "auth/register";
+        return "redirect:/login";
     }
 
     @PostMapping("/register")
-    public String register(@ModelAttribute("user") AppUser user,
-                           @RequestParam String confirmPassword,
-                           Model model,
-                           RedirectAttributes redirectAttributes) {
-        try {
-            authService.registerOwner(user, confirmPassword);
+    public String registerPostDisabled(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute(
+                "errorMessage",
+                "Hệ thống không hỗ trợ đăng ký công khai. Vui lòng đăng nhập bằng tài khoản được cấp."
+        );
 
-            redirectAttributes.addFlashAttribute(
-                    "successMessage",
-                    "Đăng ký Owner thành công. Bạn có thể đăng nhập ở mục Owner."
-            );
-
-            return "redirect:/login";
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("user", user);
-
-            return "auth/register";
-        }
+        return "redirect:/login";
     }
 
     @GetMapping("/logout")
     public String logout(HttpServletRequest request,
                          HttpServletResponse response) {
         authService.logout(request, response);
-
         return "redirect:/login";
     }
 }

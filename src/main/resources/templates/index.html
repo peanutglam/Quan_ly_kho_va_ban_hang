@@ -14,7 +14,6 @@
 
 <div class="dashboard-layout">
 
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="brand-box">
             <div class="brand-logo">SI</div>
@@ -46,7 +45,6 @@
                 ⬇️ Nhập hàng
             </a>
 
-            <!-- Chỉ Owner mới thấy cấu hình hóa đơn -->
             <a th:if="${isOwner == true
                        or (loginUser != null
                            and loginUser.role != null
@@ -61,7 +59,6 @@
                 📄 Import Google Sheet
             </a>
 
-            <!-- Chỉ Owner mới thấy quản lý tài khoản -->
             <a th:if="${isOwner == true
                        or (loginUser != null
                            and loginUser.role != null
@@ -76,7 +73,8 @@
                 🔐 Đổi mật khẩu
             </a>
 
-            <a th:href="@{/account/delete-my-account}">
+            <a th:if="${isEmployee == true}"
+               th:href="@{/account/delete-my-account}">
                 ⚠️ Xóa tài khoản
             </a>
 
@@ -86,10 +84,8 @@
         </nav>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <main class="content">
 
-        <!-- TOPBAR -->
         <div class="topbar">
             <div>
                 <h1>Dashboard</h1>
@@ -121,11 +117,8 @@
                     </span>
                 </p>
 
-                <p class="text-muted mb-0" th:if="${workspaceOwner != null}">
-                    Web/Kho của Owner:
-                    <b th:text="${workspaceOwner.fullName}">
-                        Owner
-                    </b>
+                <p class="text-muted mb-0">
+                    Ứng dụng quản lý kho hàng và bán hàng cho cửa hàng mỹ phẩm.
                 </p>
             </div>
 
@@ -140,11 +133,9 @@
             </div>
         </div>
 
-        <!-- FLASH MESSAGE -->
         <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-        <!-- HERO REVENUE -->
         <section class="hero-card">
             <div>
                 <span>Doanh thu hoàn thành</span>
@@ -157,7 +148,6 @@
             </div>
         </section>
 
-        <!-- STATISTICS -->
         <section class="stat-grid">
             <div class="stat-card">
                 <p>📦 Tổng sản phẩm</p>
@@ -180,13 +170,12 @@
             </div>
         </section>
 
-        <!-- WARNINGS -->
         <section class="warning-grid">
 
-            <!-- LOW STOCK PRODUCTS -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hàng</h5>
+
                     <a th:href="@{/products(stockStatus='LOW_STOCK')}">
                         Xem tất cả
                     </a>
@@ -227,10 +216,10 @@
                 </div>
             </div>
 
-            <!-- EXPIRING PRODUCTS -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hạn</h5>
+
                     <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">
                         Xem tất cả
                     </a>
@@ -273,10 +262,10 @@
 
         </section>
 
-        <!-- BEST SELLING PRODUCTS -->
         <section class="panel-card">
             <div class="panel-header">
                 <h5>Top sản phẩm bán chạy</h5>
+
                 <a th:href="@{/orders}">
                     Xem đơn hàng
                 </a>

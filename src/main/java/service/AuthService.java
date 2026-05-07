@@ -37,6 +37,10 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /*
+     * Hàm này giữ lại để tránh lỗi nếu code cũ còn gọi,
+     * nhưng giao diện không còn cho đăng ký Owner công khai nữa.
+     */
     @Transactional
     public AppUser registerOwner(AppUser user, String confirmPassword) {
         validateCommonUserInfo(user);
@@ -56,8 +60,12 @@ public class AuthService {
         return registerOwner(user, user.getPassword());
     }
 
+    /*
+     * Đăng nhập chung cho cả Owner và Employee.
+     * Không chia 2 form Owner/Employee nữa.
+     */
     @Transactional
-    public AppUser login(String username, String password, String accountType) {
+    public AppUser login(String username, String password) {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
             throw new IllegalArgumentException("Vui lòng nhập đầy đủ tài khoản và mật khẩu");
         }
@@ -68,27 +76,18 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Sai tài khoản hoặc mật khẩu"));
 
         if (Boolean.FALSE.equals(user.getActive())) {
-            throw new IllegalArgumentException("Tài khoản này đã bị khóa hoặc đã bị xóa");
+            throw new IllegalArgumentException("Tài khoản này đã bị khóa hoặc không còn hoạt động");
         }
 
         if (!isPasswordCorrect(user, password)) {
             throw new IllegalArgumentException("Sai tài khoản hoặc mật khẩu");
         }
 
-        String type = normalizeAccountType(accountType);
         String role = normalizeRole(user.getRole());
 
-        if (ACCOUNT_TYPE_OWNER.equals(type) && !AppUser.ROLE_OWNER.equals(role)) {
-            throw new IllegalArgumentException("Đây không phải tài khoản Owner. Vui lòng đăng nhập ở mục Employee.");
-        }
-
-        if (ACCOUNT_TYPE_EMPLOYEE.equals(type)) {
-            if (AppUser.ROLE_OWNER.equals(role)) {
-                throw new IllegalArgumentException("Đây là tài khoản Owner. Vui lòng đăng nhập ở mục Owner.");
-            }
-
+        if (!AppUser.ROLE_OWNER.equals(role)) {
             if (user.getOwner() == null || Boolean.FALSE.equals(user.getOwner().getActive())) {
-                throw new IllegalArgumentException("Tài khoản Employee chưa được gắn với Owner hợp lệ");
+                throw new IllegalArgumentException("Tài khoản nhân viên chưa được gắn với Owner hợp lệ");
             }
         }
 
@@ -101,9 +100,12 @@ public class AuthService {
         return user;
     }
 
+    /*
+     * Giữ lại overload này để các controller/service cũ không bị lỗi compile.
+     */
     @Transactional
-    public AppUser login(String username, String password) {
-        return login(username, password, ACCOUNT_TYPE_OWNER);
+    public AppUser login(String username, String password, String accountType) {
+        return login(username, password);
     }
 
     public AppUser getCurrentUser() {
@@ -123,12 +125,17 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Phiên đăng nhập không còn hợp lệ"));
 
         if (Boolean.FALSE.equals(user.getActive())) {
-            throw new IllegalArgumentException("Tài khoản này đã bị khóa hoặc đã bị xóa");
+            throw new IllegalArgumentException("Tài khoản này đã bị khóa hoặc không còn hoạt động");
         }
 
         return user;
     }
 
+    /*
+     * Với đề tài hiện tại:
+     * - Owner là tài khoản quản trị chính của cửa hàng.
+     * - Employee được gắn với Owner để dùng chung dữ liệu cửa hàng.
+     */
     public AppUser getWorkspaceOwner() {
         AppUser currentUser = getCurrentUser();
         return getWorkspaceOwner(currentUser);
@@ -146,7 +153,7 @@ public class AuthService {
         }
 
         if (user.getOwner() == null) {
-            throw new IllegalArgumentException("Tài khoản Employee chưa được gắn với Owner");
+            throw new IllegalArgumentException("Tài khoản nhân viên chưa được gắn với Owner");
         }
 
         return user.getOwner();
@@ -232,7 +239,7 @@ public class AuthService {
         String role = normalizeRole(user.getRole());
 
         if (!AppUser.ROLE_STAFF.equals(role) && !AppUser.ROLE_SALE.equals(role)) {
-            throw new IllegalArgumentException("Owner chỉ được tạo tài khoản Employee với vai trò STAFF hoặc SALE");
+            throw new IllegalArgumentException("Chỉ được tạo tài khoản nhân viên với vai trò STAFF hoặc SALE");
         }
 
         user.setRole(role);
@@ -255,10 +262,10 @@ public class AuthService {
         AppUser owner = getWorkspaceOwner();
 
         AppUser employee = userRepository.findByIdAndOwner(employeeId, owner)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Employee thuộc web của bạn"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản nhân viên thuộc cửa hàng"));
 
         if (AppUser.ROLE_OWNER.equals(normalizeRole(employee.getRole()))) {
-            throw new IllegalArgumentException("Không thể xóa Owner ở chức năng xóa Employee");
+            throw new IllegalArgumentException("Không thể xóa tài khoản Owner chính tại chức năng này");
         }
 
         employee.setActive(false);
@@ -285,13 +292,7 @@ public class AuthService {
         }
 
         if (AppUser.ROLE_OWNER.equals(normalizeRole(currentUser.getRole()))) {
-            List<AppUser> employees = userRepository.findByOwnerOrderByIdDesc(currentUser);
-
-            for (AppUser employee : employees) {
-                employee.setActive(false);
-            }
-
-            userRepository.saveAll(employees);
+            throw new IllegalArgumentException("Không thể xóa tài khoản Owner chính. Owner là tài khoản được cấp khi triển khai hệ thống.");
         }
 
         currentUser.setActive(false);
@@ -313,7 +314,7 @@ public class AuthService {
         }
 
         HttpSession newSession = request.getSession(true);
-        newSession.setMaxInactiveInterval(30 * 60);
+        newSession.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
         newSession.setAttribute(SESSION_USER_ID, user.getId());
         newSession.setAttribute(SESSION_CURRENT_USER, user);
     }
@@ -403,20 +404,6 @@ public class AuthService {
         }
 
         return user.getPassword().equals(rawPassword);
-    }
-
-    private String normalizeAccountType(String rawType) {
-        if (!StringUtils.hasText(rawType)) {
-            return ACCOUNT_TYPE_OWNER;
-        }
-
-        String value = rawType.trim().toUpperCase(Locale.ROOT);
-
-        if (ACCOUNT_TYPE_EMPLOYEE.equals(value)) {
-            return ACCOUNT_TYPE_EMPLOYEE;
-        }
-
-        return ACCOUNT_TYPE_OWNER;
     }
 
     private String normalizeRole(String rawRole) {
