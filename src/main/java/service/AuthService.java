@@ -1,6 +1,7 @@
 package service;
 
 import entity.AppUser;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -300,7 +301,19 @@ public class AuthService {
 
         logout(request, response);
     }
+    public void verifyOwnerPassword(String ownerPassword) {
+        requireRole(AppUser.ROLE_OWNER);
 
+        if (!StringUtils.hasText(ownerPassword)) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu Owner để xác nhận thao tác");
+        }
+
+        AppUser owner = getWorkspaceOwner();
+
+        if (!isPasswordCorrect(owner, ownerPassword)) {
+            throw new IllegalArgumentException("Mật khẩu Owner không đúng. Không thể thực hiện thao tác xóa.");
+        }
+    }
     private void startAuthenticatedSession(AppUser user) {
         ServletRequestAttributes attributes =
                 (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();

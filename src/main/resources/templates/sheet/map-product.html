@@ -22,7 +22,8 @@
         </div>
 
         <div class="alert alert-warning">
-            Việc này sẽ xóa dữ liệu cũ và thay bằng dữ liệu bạn chuẩn bị đưa vào
+            Việc này sẽ xóa dữ liệu cũ và thay bằng dữ liệu bạn chuẩn bị đưa vào.
+            Với sản phẩm, tồn kho sẽ được tính theo công thức: tồn = tổng số lượng - số lượng xuất.
         </div>
 
         <form th:action="@{/sheet/import-product}" method="post"
@@ -48,9 +49,25 @@
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label">Tổng số lượng</label>
+                    <select name="totalQuantityColumn" class="form-select">
+                        <option value="">Nếu không có sẽ lấy theo số lượng tồn + số lượng xuất</option>
+                        <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Số lượng xuất</label>
+                    <select name="soldQuantityColumn" class="form-select">
+                        <option value="">Mặc định 0</option>
+                        <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label">Số lượng tồn</label>
                     <select name="quantityColumn" class="form-select">
-                        <option value="">Mặc định 0</option>
+                        <option value="">Tự tính theo tổng số lượng - số lượng xuất</option>
                         <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
                     </select>
                 </div>

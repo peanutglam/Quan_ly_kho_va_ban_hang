@@ -1,4 +1,5 @@
 package controller;
+
 import entity.AppUser;
 import entity.Product;
 import entity.Supplier;
@@ -23,7 +24,9 @@ public class ProductController {
     private final SupplierService supplierService;
     private final AuthService authService;
 
-    public ProductController(ProductService productService, SupplierService supplierService, AuthService authService) {
+    public ProductController(ProductService productService,
+                             SupplierService supplierService,
+                             AuthService authService) {
         this.productService = productService;
         this.supplierService = supplierService;
         this.authService = authService;
@@ -35,9 +38,9 @@ public class ProductController {
                                @RequestParam(value = "expiryStatus", required = false) String expiryStatus,
                                Model model) {
         AppUser user = authService.getCurrentUser();
+
         List<Product> products = productService.filterProducts(user, keyword, stockStatus, expiryStatus);
 
-        // Map số lượng đã bán và đã nhập theo sản phẩm
         Map<Long, Long> soldQtyMap = productService.getSoldQtyMap(user);
         Map<Long, Long> importedQtyMap = productService.getTotalImportedMap(user);
 
@@ -47,16 +50,19 @@ public class ProductController {
         model.addAttribute("keyword", keyword);
         model.addAttribute("stockStatus", stockStatus);
         model.addAttribute("expiryStatus", expiryStatus);
+
         return "products/list";
     }
 
     @GetMapping("/create")
     public String showCreateForm(Model model) {
         authService.requireRole("OWNER", "STAFF");
+
         model.addAttribute("product", new Product());
         model.addAttribute("suppliers", supplierService.getAllSuppliers());
         model.addAttribute("pageTitle", "Thêm sản phẩm");
         model.addAttribute("formAction", "/products/create");
+
         return "products/form";
     }
 
@@ -66,19 +72,24 @@ public class ProductController {
                                 @RequestParam(value = "supplierId", required = false) Long supplierId,
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
+
         AppUser user = authService.getCurrentUser();
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
             model.addAttribute("pageTitle", "Thêm sản phẩm");
             model.addAttribute("formAction", "/products/create");
             return "products/form";
         }
+
         if (supplierId != null) {
             try {
                 Supplier supplier = supplierService.getSupplierById(supplierId);
                 product.setSupplier(supplier);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
+
         try {
             productService.create(product, user);
             return "redirect:/products";
@@ -94,11 +105,14 @@ public class ProductController {
     @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model) {
         authService.requireRole("OWNER", "STAFF");
+
         AppUser user = authService.getCurrentUser();
+
         model.addAttribute("product", productService.getById(id, user));
         model.addAttribute("suppliers", supplierService.getAllSuppliers());
         model.addAttribute("pageTitle", "Cập nhật sản phẩm");
         model.addAttribute("formAction", "/products/edit/" + id);
+
         return "products/form";
     }
 
@@ -109,19 +123,24 @@ public class ProductController {
                                 @RequestParam(value = "supplierId", required = false) Long supplierId,
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
+
         AppUser user = authService.getCurrentUser();
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
             model.addAttribute("pageTitle", "Cập nhật sản phẩm");
             model.addAttribute("formAction", "/products/edit/" + id);
             return "products/form";
         }
+
         if (supplierId != null) {
             try {
                 Supplier supplier = supplierService.getSupplierById(supplierId);
                 product.setSupplier(supplier);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
+
         try {
             productService.update(id, product, user);
             return "redirect:/products";
@@ -137,26 +156,54 @@ public class ProductController {
     @GetMapping("/delete/{id}")
     public String deleteProduct(@PathVariable Long id, RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER", "STAFF");
+
         AppUser user = authService.getCurrentUser();
+
         try {
             String msg = productService.delete(id, user);
             redirectAttrs.addFlashAttribute("successMessage", msg);
         } catch (Exception e) {
             redirectAttrs.addFlashAttribute("errorMessage", "Không thể xóa: " + e.getMessage());
         }
+
         return "redirect:/products";
     }
 
+    /*
+     * Không cho xóa toàn bộ bằng GET nữa.
+     */
     @GetMapping("/delete-all")
-    public String deleteAll(RedirectAttributes redirectAttrs) {
+    public String deleteAllByGet(RedirectAttributes redirectAttrs) {
+        redirectAttrs.addFlashAttribute(
+                "errorMessage",
+                "Vui lòng dùng nút Xóa toàn bộ và nhập mật khẩu Owner để xác nhận."
+        );
+
+        return "redirect:/products";
+    }
+
+    /*
+     * Xóa toàn bộ sản phẩm phải là OWNER và phải nhập đúng mật khẩu OWNER.
+     */
+    @PostMapping("/delete-all")
+    public String deleteAll(@RequestParam String ownerPassword,
+                            RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER");
+
         AppUser user = authService.getCurrentUser();
+
         try {
+            authService.verifyOwnerPassword(ownerPassword);
             productService.deleteAll(user);
-            redirectAttrs.addFlashAttribute("successMessage", "Đã xóa toàn bộ sản phẩm.");
+
+            redirectAttrs.addFlashAttribute(
+                    "successMessage",
+                    "Đã xóa/ẩn toàn bộ sản phẩm. Dữ liệu lịch sử đơn hàng cũ vẫn được giữ an toàn."
+            );
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("errorMessage", "Lỗi khi xóa: " + e.getMessage());
+            redirectAttrs.addFlashAttribute("errorMessage", "Không thể xóa toàn bộ sản phẩm: " + e.getMessage());
         }
+
         return "redirect:/products";
     }
 }

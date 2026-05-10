@@ -50,13 +50,15 @@ public class FlexibleSheetImportController {
     @PostMapping("/import-product")
     public String importProduct(@RequestParam String sheetUrl,
                                 @RequestParam String gid,
-                                @RequestParam String codeColumn,
+                                @RequestParam(required = false, defaultValue = "") String codeColumn,
                                 @RequestParam String nameColumn,
-                                @RequestParam String quantityColumn,
-                                @RequestParam String importPriceColumn,
-                                @RequestParam String salePriceColumn,
-                                @RequestParam String supplierColumn,
-                                @RequestParam String expiryDateColumn,
+                                @RequestParam(required = false, defaultValue = "") String quantityColumn,
+                                @RequestParam(required = false, defaultValue = "") String totalQuantityColumn,
+                                @RequestParam(required = false, defaultValue = "") String soldQuantityColumn,
+                                @RequestParam(required = false, defaultValue = "") String importPriceColumn,
+                                @RequestParam(required = false, defaultValue = "") String salePriceColumn,
+                                @RequestParam(required = false, defaultValue = "") String supplierColumn,
+                                @RequestParam(required = false, defaultValue = "") String expiryDateColumn,
                                 Model model) {
         try {
             int count = service.importProducts(
@@ -65,6 +67,8 @@ public class FlexibleSheetImportController {
                     codeColumn,
                     nameColumn,
                     quantityColumn,
+                    totalQuantityColumn,
+                    soldQuantityColumn,
                     importPriceColumn,
                     salePriceColumn,
                     supplierColumn,
@@ -83,13 +87,16 @@ public class FlexibleSheetImportController {
     @PostMapping("/import-order")
     public String importOrder(@RequestParam String sheetUrl,
                               @RequestParam String gid,
-                              @RequestParam String orderCodeColumn,
+                              @RequestParam(required = false, defaultValue = "") String orderCodeColumn,
                               @RequestParam String customerNameColumn,
-                              @RequestParam String phoneColumn,
-                              @RequestParam String addressColumn,
+                              @RequestParam(required = false, defaultValue = "") String phoneColumn,
+                              @RequestParam(required = false, defaultValue = "") String addressColumn,
                               @RequestParam String productNameColumn,
-                              @RequestParam String quantityColumn,
-                              @RequestParam String statusColumn,
+                              @RequestParam(required = false, defaultValue = "") String quantityColumn,
+                              @RequestParam(required = false, defaultValue = "") String shippingFeeColumn,
+                              @RequestParam(required = false, defaultValue = "") String totalBillColumn,
+                              @RequestParam(required = false, defaultValue = "") String customerDepositColumn,
+                              @RequestParam(required = false, defaultValue = "") String statusColumn,
                               Model model) {
         try {
             int count = service.importOrders(
@@ -101,6 +108,9 @@ public class FlexibleSheetImportController {
                     addressColumn,
                     productNameColumn,
                     quantityColumn,
+                    shippingFeeColumn,
+                    totalBillColumn,
+                    customerDepositColumn,
                     statusColumn
             );
 

@@ -232,18 +232,27 @@ public class ProductService {
         Map<Long, Long> importedQtyMap = getTotalImportedMap(user);
 
         for (Product product : products) {
-            long sold = soldQtyMap.getOrDefault(product.getId(), 0L);
+            long soldFromOrders = soldQtyMap.getOrDefault(product.getId(), 0L);
             long imported = importedQtyMap.getOrDefault(product.getId(), 0L);
 
-            int currentStock = product.getQuantity();
-            int total = Math.max(product.getTotalQuantity(), currentStock + safeLongToInt(sold));
+            int currentSold = product.getSoldQuantity() == null ? 0 : product.getSoldQuantity();
+            int currentTotal = product.getTotalQuantity() == null ? 0 : product.getTotalQuantity();
+            int currentStock = product.getQuantity() == null ? 0 : product.getQuantity();
+
+            int finalSold = Math.max(currentSold, safeLongToInt(soldFromOrders));
+
+            int finalTotal = Math.max(currentTotal, currentStock + finalSold);
 
             if (imported > 0) {
-                total = Math.max(total, safeLongToInt(imported));
+                finalTotal = Math.max(finalTotal, safeLongToInt(imported));
             }
 
-            product.setSoldQuantity(safeLongToInt(sold));
-            product.setTotalQuantity(Math.max(total, product.getSoldQuantity()));
+            if (finalSold > finalTotal) {
+                finalTotal = finalSold;
+            }
+
+            product.setSoldQuantity(finalSold);
+            product.setTotalQuantity(finalTotal);
             product.recalculateInventoryFields();
         }
 
