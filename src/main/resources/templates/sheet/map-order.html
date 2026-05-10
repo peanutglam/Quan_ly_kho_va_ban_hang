@@ -22,7 +22,7 @@
     </div>
 
     <div class="alert alert-warning">
-      Việc này sẽ xóa dữ liệu cũ và thay bằng dữ liệu bạn chuẩn bị đưa vào
+      Việc này sẽ xóa dữ liệu cũ và thay bằng dữ liệu bạn chuẩn bị đưa vào.
     </div>
 
     <form th:action="@{/sheet/import-order}" method="post"
@@ -74,6 +74,30 @@
           <label class="form-label">Số lượng</label>
           <select name="quantityColumn" class="form-select">
             <option value="">Mặc định 1</option>
+            <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Phí ship</label>
+          <select name="shippingFeeColumn" class="form-select">
+            <option value="">Mặc định 0</option>
+            <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Tổng bill</label>
+          <select name="totalBillColumn" class="form-select">
+            <option value="">Tự tính = thành tiền sản phẩm + phí ship</option>
+            <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Khách cọc</label>
+          <select name="customerDepositColumn" class="form-select">
+            <option value="">Mặc định 0</option>
             <option th:each="h : ${headers}" th:value="${h}" th:text="${h}"></option>
           </select>
         </div>

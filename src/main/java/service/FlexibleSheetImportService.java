@@ -82,6 +82,8 @@ public class FlexibleSheetImportService {
                               String codeColumn,
                               String nameColumn,
                               String quantityColumn,
+                              String totalQuantityColumn,
+                              String soldQuantityColumn,
                               String importPriceColumn,
                               String salePriceColumn,
                               String supplierColumn,
@@ -109,6 +111,25 @@ public class FlexibleSheetImportService {
                 code = "SP-" + (count + 1);
             }
 
+            int stockQuantity = toInt(get(row, quantityColumn));
+            int totalQuantity = toInt(get(row, totalQuantityColumn));
+            int soldQuantity = toInt(get(row, soldQuantityColumn));
+
+            /*
+             * Nếu sheet có tổng số lượng + số lượng xuất:
+             * tồn = tổng - xuất.
+             *
+             * Nếu sheet chỉ có cột tồn cũ:
+             * tổng = tồn + xuất.
+             */
+            if (totalQuantity <= 0) {
+                totalQuantity = stockQuantity + soldQuantity;
+            }
+
+            if (soldQuantity > totalQuantity) {
+                totalQuantity = soldQuantity;
+            }
+
             Product product = productRepository
                     .findByCodeAndUser(code, owner)
                     .orElse(new Product());
@@ -117,8 +138,8 @@ public class FlexibleSheetImportService {
             product.setName(name);
             product.setCategory("Mỹ phẩm");
             product.setBrand(get(row, supplierColumn));
-            product.setSoldQuantity(0);
-            product.setTotalQuantity(toInt(get(row, quantityColumn)));
+            product.setTotalQuantity(totalQuantity);
+            product.setSoldQuantity(soldQuantity);
             product.setImportPrice(toMoney(get(row, importPriceColumn)));
             product.setSalePrice(toMoney(get(row, salePriceColumn)));
             product.setExpiryDate(toDate(get(row, expiryDateColumn)));
@@ -148,6 +169,9 @@ public class FlexibleSheetImportService {
                             String addressColumn,
                             String productNameColumn,
                             String quantityColumn,
+                            String shippingFeeColumn,
+                            String totalBillColumn,
+                            String customerDepositColumn,
                             String statusColumn) throws Exception {
         AppUser owner = authService.getWorkspaceOwner();
 
@@ -170,16 +194,6 @@ public class FlexibleSheetImportService {
             if (blank(orderCode)) {
                 orderCode = "ORD-SHEET-" + (count + 1);
             }
-
-            Order order = new Order();
-            order.setOrderCode(orderCode);
-            order.setCustomerName(customerName);
-            order.setCustomerPhone(get(row, phoneColumn));
-            order.setCustomerAddress(get(row, addressColumn));
-            order.setStatus(normalizeStatus(get(row, statusColumn)));
-            order.setUser(owner);
-
-            Order savedOrder = orderRepository.save(order);
 
             Product product = productRepository
                     .findFirstByNameContainingIgnoreCaseAndUserAndActiveTrue(productName, owner)
@@ -204,21 +218,41 @@ public class FlexibleSheetImportService {
                     ? BigDecimal.ZERO
                     : product.getSalePrice();
 
-            BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            BigDecimal productSubtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            BigDecimal shippingFee = toMoney(get(row, shippingFeeColumn));
+            BigDecimal importedTotalBill = toMoney(get(row, totalBillColumn));
+            BigDecimal customerDeposit = toMoney(get(row, customerDepositColumn));
+
+            BigDecimal finalTotalBill = importedTotalBill.signum() > 0
+                    ? importedTotalBill
+                    : productSubtotal.add(shippingFee);
+
+            Order order = new Order();
+            order.setOrderCode(orderCode);
+            order.setCustomerName(customerName);
+            order.setCustomerPhone(get(row, phoneColumn));
+            order.setCustomerAddress(get(row, addressColumn));
+            order.setStatus(normalizeStatus(get(row, statusColumn)));
+            order.setUser(owner);
+            order.setShippingFee(shippingFee);
+            order.setCustomerDeposit(customerDeposit);
+            order.setTotalBill(finalTotalBill);
+            order.setTotalAmount(finalTotalBill);
+
+            Order savedOrder = orderRepository.save(order);
 
             OrderItem item = new OrderItem();
             item.setOrder(savedOrder);
             item.setProduct(product);
             item.setQuantity(quantity);
             item.setUnitPrice(unitPrice);
-            item.setSubtotal(subtotal);
+            item.setSubtotal(productSubtotal);
 
             orderItemRepository.save(item);
 
             productService.decreaseStockForSale(product, quantity);
 
-            savedOrder.setTotalAmount(subtotal);
-
+            savedOrder.recalculateMoneyFields();
             orderRepository.save(savedOrder);
 
             count++;
