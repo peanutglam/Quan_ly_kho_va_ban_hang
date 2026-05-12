@@ -4,22 +4,19 @@ import entity.AppUser;
 import entity.Order;
 import entity.OrderItem;
 import entity.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.OrderRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -34,23 +31,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductService productService;
     private final AuthService authService;
-    @Transactional(readOnly = true)
-    public Page<Order> filterOrdersPaged(String keyword,
-                                         String status,
-                                         int page,
-                                         int size) {
-        AppUser owner = authService.getWorkspaceOwner();
 
-        int safePage = Math.max(page, 0);
-        int safeSize = size <= 0 ? 30 : Math.min(size, 30);
-
-        Pageable pageable = PageRequest.of(safePage, safeSize);
-
-        String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
-        String st = StringUtils.hasText(status) ? status.trim() : "";
-
-        return orderRepository.filterOrdersPaged(owner, kw, st, pageable);
-    }
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         ProductService productService,
@@ -61,55 +42,86 @@ public class OrderService {
         this.authService = authService;
     }
 
+    /*
+     * Đề tài hiện tại: 1 ứng dụng = 1 cửa hàng.
+     * Vì vậy phần đọc/hiển thị đơn hàng không phụ thuộc user_id nữa.
+     * Điều này tránh lỗi vừa login dashboard hiện 0 nhưng DB vẫn có dữ liệu.
+     */
+    @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
-        AppUser owner = authService.getWorkspaceOwner();
-        return orderRepository.findByUserOrderByIdDesc(owner);
+        return allOrdersSortedDesc();
     }
 
-    public List<Order> filterOrders(String keyword, String status) {
-        List<Order> orders = getAllOrders();
+    @Transactional(readOnly = true)
+    public Page<Order> filterOrdersPaged(String keyword,
+                                         String status,
+                                         int page,
+                                         int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 30 : Math.min(size, 30);
 
-        if (StringUtils.hasText(keyword)) {
-            String kw = keyword.trim().toLowerCase();
+        String kw = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase() : "";
+        String st = StringUtils.hasText(status) ? status.trim() : "";
 
-            orders = orders.stream().filter(o ->
-                    (o.getOrderCode() != null && o.getOrderCode().toLowerCase().contains(kw)) ||
-                            (o.getCustomerName() != null && o.getCustomerName().toLowerCase().contains(kw)) ||
-                            (o.getCustomerPhone() != null && o.getCustomerPhone().toLowerCase().contains(kw))
-            ).toList();
-        }
+        List<Order> filtered = allOrdersSortedDesc();
 
-        if (StringUtils.hasText(status)) {
-            orders = orders.stream()
-                    .filter(o -> status.equals(o.getStatus()))
+        if (StringUtils.hasText(kw)) {
+            filtered = filtered.stream()
+                    .filter(o ->
+                            containsIgnoreCase(o.getOrderCode(), kw)
+                                    || containsIgnoreCase(o.getCustomerName(), kw)
+                                    || containsIgnoreCase(o.getCustomerPhone(), kw)
+                                    || containsIgnoreCase(o.getCustomerAddress(), kw)
+                    )
                     .toList();
         }
 
-        return orders;
+        if (StringUtils.hasText(st)) {
+            filtered = filtered.stream()
+                    .filter(o -> st.equals(o.getStatus()))
+                    .toList();
+        }
+
+        int start = safePage * safeSize;
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        if (start >= filtered.size()) {
+            return new PageImpl<>(List.of(), pageable, filtered.size());
+        }
+
+        int end = Math.min(start + safeSize, filtered.size());
+
+        return new PageImpl<>(filtered.subList(start, end), pageable, filtered.size());
     }
 
+    @Transactional(readOnly = true)
     public Order getById(Long id) {
-        AppUser owner = authService.getWorkspaceOwner();
-
-        return orderRepository.findByIdAndUser(id, owner)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng trong web của Owner này"));
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng"));
     }
 
+    @Transactional(readOnly = true)
     public long countOrders() {
-        AppUser owner = authService.getWorkspaceOwner();
-        return orderRepository.countByUser(owner);
+        return orderRepository.count();
     }
 
+    @Transactional(readOnly = true)
     public long countByStatus(String status) {
-        AppUser owner = authService.getWorkspaceOwner();
-        return orderRepository.countByUserAndStatus(owner, status);
+        if (!StringUtils.hasText(status)) {
+            return 0;
+        }
+
+        return allOrdersSortedDesc().stream()
+                .filter(o -> status.equals(o.getStatus()))
+                .count();
     }
 
+    @Transactional(readOnly = true)
     public BigDecimal totalRevenue() {
-        return getAllOrders().stream()
+        return allOrdersSortedDesc().stream()
                 .filter(o -> STATUS_COMPLETED.equals(o.getStatus()) || STATUS_DELIVERED.equals(o.getStatus()))
                 .map(Order::getTotalAmount)
-                .filter(t -> t != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -197,11 +209,18 @@ public class OrderService {
         }
 
         order.setTotalAmount(total);
+        order.setTotalBill(total);
+        order.recalculateMoneyFields();
+
         orderRepository.save(order);
     }
 
     @Transactional
     public void updateStatus(Long orderId, String newStatus) {
+        if (!StringUtils.hasText(newStatus)) {
+            throw new IllegalArgumentException("Trạng thái đơn hàng không hợp lệ");
+        }
+
         Order order = getById(orderId);
 
         String oldStatus = order.getStatus();
@@ -229,9 +248,7 @@ public class OrderService {
 
     @Transactional
     public void deleteAll() {
-        AppUser owner = authService.getWorkspaceOwner();
-
-        List<Order> orders = orderRepository.findByUserOrderByIdDesc(owner);
+        List<Order> orders = allOrdersSortedDesc();
 
         for (Order order : orders) {
             if (!STATUS_CANCELLED.equals(order.getStatus())) {
@@ -242,11 +259,64 @@ public class OrderService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Object[]> getBestSellingProducts() {
-        AppUser owner = authService.getWorkspaceOwner();
-        return orderItemRepository.findBestSellingProducts(owner, PageRequest.of(0, 10));
+        Map<Long, BestSellingStat> statMap = new LinkedHashMap<>();
+
+        for (Order order : allOrdersSortedDesc()) {
+            if (STATUS_CANCELLED.equals(order.getStatus())) {
+                continue;
+            }
+
+            if (order.getItems() == null) {
+                continue;
+            }
+
+            for (OrderItem item : order.getItems()) {
+                if (item == null || item.getProduct() == null) {
+                    continue;
+                }
+
+                Product product = item.getProduct();
+                Long productId = product.getId();
+
+                if (productId == null) {
+                    continue;
+                }
+
+                int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+
+                BigDecimal revenue = BigDecimal.ZERO;
+
+                if (item.getSubtotal() != null && item.getSubtotal().signum() > 0) {
+                    revenue = item.getSubtotal();
+                } else if (item.getDisplaySubtotal() != null) {
+                    revenue = item.getDisplaySubtotal();
+                } else if (order.getTotalAmount() != null) {
+                    revenue = order.getTotalAmount();
+                }
+
+                BestSellingStat stat = statMap.computeIfAbsent(
+                        productId,
+                        id -> new BestSellingStat(product.getName(), 0L, BigDecimal.ZERO)
+                );
+
+                stat.quantity += quantity;
+                stat.revenue = stat.revenue.add(revenue);
+            }
+        }
+
+        return statMap.values()
+                .stream()
+                .sorted(
+                        Comparator.comparingLong(BestSellingStat::quantity).reversed()
+                                .thenComparing(BestSellingStat::revenue, Comparator.reverseOrder())
+                )
+                .map(stat -> new Object[]{stat.productName, stat.quantity, stat.revenue})
+                .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Map<String, BigDecimal> revenueByMonth() {
         Map<String, BigDecimal> result = new LinkedHashMap<>();
 
@@ -254,7 +324,7 @@ public class OrderService {
             result.put("Tháng " + i, BigDecimal.ZERO);
         }
 
-        getAllOrders().stream()
+        allOrdersSortedDesc().stream()
                 .filter(o -> STATUS_COMPLETED.equals(o.getStatus()) || STATUS_DELIVERED.equals(o.getStatus()))
                 .filter(o -> o.getCreatedAt() != null)
                 .forEach(o -> {
@@ -266,6 +336,7 @@ public class OrderService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Long> orderStatusStatistics() {
         Map<String, Long> result = new LinkedHashMap<>();
 
@@ -276,6 +347,17 @@ public class OrderService {
         result.put("Đã hủy", countByStatus(STATUS_CANCELLED));
 
         return result;
+    }
+
+    private List<Order> allOrdersSortedDesc() {
+        return orderRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Order::getId, Comparator.nullsLast(Long::compareTo)).reversed())
+                .toList();
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword);
     }
 
     private void restoreOrderStock(Order order) {
@@ -330,5 +412,25 @@ public class OrderService {
     }
 
     private record OrderLine(Product product, int quantity) {
+    }
+
+    private static class BestSellingStat {
+        private final String productName;
+        private long quantity;
+        private BigDecimal revenue;
+
+        private BestSellingStat(String productName, long quantity, BigDecimal revenue) {
+            this.productName = productName;
+            this.quantity = quantity;
+            this.revenue = revenue;
+        }
+
+        private long quantity() {
+            return quantity;
+        }
+
+        private BigDecimal revenue() {
+            return revenue;
+        }
     }
 }

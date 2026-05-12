@@ -25,7 +25,7 @@
         </div>
 
         <nav class="side-menu">
-            <a th:href="@{/}" class="active">
+            <a th:href="@{/dashboard}" class="active">
                 📊 Dashboard
             </a>
 
@@ -315,5 +315,31 @@
 
     </main>
 </div>
+<script>
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        const isFreshLogin = params.has("freshLogin");
+
+        /*
+         * Sau login, nếu trình duyệt vẫn render dashboard cũ = 0,
+         * script này sẽ reload đúng 1 lần.
+         */
+        if (isFreshLogin && sessionStorage.getItem("dashboardFreshReloaded") !== "1") {
+            sessionStorage.setItem("dashboardFreshReloaded", "1");
+
+            setTimeout(function () {
+                window.location.replace("/dashboard?ts=" + Date.now());
+            }, 150);
+        }
+
+        /*
+         * Khi đã vào dashboard bình thường thì reset cờ,
+         * để lần login sau vẫn được refresh 1 lần.
+         */
+        if (!isFreshLogin) {
+            sessionStorage.removeItem("dashboardFreshReloaded");
+        }
+    })();
+</script>
 </body>
 </html>

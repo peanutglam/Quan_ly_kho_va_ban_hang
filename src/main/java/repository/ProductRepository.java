@@ -87,4 +87,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByUserAndActiveTrueAndExpiryDateBefore(AppUser user, LocalDate date);
 
     List<Product> findByUserAndActiveTrueAndExpiryDateBetween(AppUser user, LocalDate startDate, LocalDate endDate);
+
+    List<Product> findAllByCodeOrderByIdAsc(String code);
+
+    Optional<Product> findFirstByCodeOrderByIdAsc(String code);
 }

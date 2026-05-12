@@ -2,17 +2,20 @@ package service;
 
 import entity.AppUser;
 import entity.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.ProductRepository;
 import repository.StockImportRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +38,29 @@ public class ProductService {
         this.authService = authService;
     }
 
+    /*
+     * Đề tài hiện tại: 1 ứng dụng = 1 cửa hàng = 1 Owner chính.
+     * Vì vậy phần đọc/hiển thị sản phẩm không phụ thuộc user_id nữa.
+     * Điều này tránh lỗi logout/login lại web query sai user_id làm tưởng như mất dữ liệu.
+     */
     @Transactional(readOnly = true)
     public List<Product> getAllProducts(String keyword, AppUser user) {
-        user = workspaceOwner(user);
+        List<Product> products = activeProducts();
 
-        if (!StringUtils.hasText(keyword)) {
-            return productRepository.findByUserAndActiveTrueOrderByIdDesc(user);
+        if (StringUtils.hasText(keyword)) {
+            String kw = keyword.trim().toLowerCase();
+
+            products = products.stream()
+                    .filter(p ->
+                            containsIgnoreCase(p.getCode(), kw)
+                                    || containsIgnoreCase(p.getName(), kw)
+                                    || containsIgnoreCase(p.getBrand(), kw)
+                                    || containsIgnoreCase(p.getCategory(), kw)
+                    )
+                    .toList();
         }
 
-        return productRepository.searchByUserAndKeyword(user, keyword.trim());
+        return products;
     }
 
     @Transactional(readOnly = true)
@@ -51,8 +68,6 @@ public class ProductService {
                                         String keyword,
                                         String stockStatus,
                                         String expiryStatus) {
-        user = workspaceOwner(user);
-
         List<Product> products = getAllProducts(keyword, user);
 
         if ("OUT_OF_STOCK".equals(stockStatus)) {
@@ -78,9 +93,9 @@ public class ProductService {
         } else if ("EXPIRING_SOON".equals(expiryStatus)) {
             products = products.stream()
                     .filter(p ->
-                            p.getExpiryDate() != null &&
-                                    !p.getExpiryDate().isBefore(today) &&
-                                    !p.getExpiryDate().isAfter(today.plusDays(30))
+                            p.getExpiryDate() != null
+                                    && !p.getExpiryDate().isBefore(today)
+                                    && !p.getExpiryDate().isAfter(today.plusDays(30))
                     )
                     .toList();
         }
@@ -88,12 +103,6 @@ public class ProductService {
         return products;
     }
 
-    public Product getById(Long id, AppUser user) {
-        user = workspaceOwner(user);
-
-        return productRepository.findByIdAndUserAndActiveTrue(id, user)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm trong web của Owner này"));
-    }
     @Transactional(readOnly = true)
     public Page<Product> filterProductsPage(AppUser user,
                                             String keyword,
@@ -101,40 +110,43 @@ public class ProductService {
                                             String expiryStatus,
                                             int page,
                                             int size) {
-        user = workspaceOwner(user);
-
         int safePage = Math.max(page, 0);
         int safeSize = size <= 0 ? 30 : Math.min(size, 30);
 
+        List<Product> filtered = filterProducts(user, keyword, stockStatus, expiryStatus);
+
+        int start = safePage * safeSize;
+
+        if (start >= filtered.size()) {
+            Pageable emptyPageable = PageRequest.of(safePage, safeSize);
+            return new PageImpl<>(List.of(), emptyPageable, filtered.size());
+        }
+
+        int end = Math.min(start + safeSize, filtered.size());
+
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
-        String stock = StringUtils.hasText(stockStatus) ? stockStatus.trim() : "";
-        String expiry = StringUtils.hasText(expiryStatus) ? expiryStatus.trim() : "";
-
-        LocalDate today = LocalDate.now();
-
-        return productRepository.filterProductsPaged(
-                user,
-                kw,
-                stock,
-                expiry,
-                today,
-                today.plusDays(30),
-                pageable
-        );
+        return new PageImpl<>(filtered.subList(start, end), pageable, filtered.size());
     }
+
+    @Transactional(readOnly = true)
+    public Product getById(Long id, AppUser user) {
+        return productRepository.findById(id)
+                .filter(this::isActive)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm"));
+    }
+
     @Transactional
     public Product create(Product product, AppUser user) {
-        user = workspaceOwner(user);
+        AppUser owner = workspaceOwner(user);
 
         validateProduct(product);
 
-        if (productRepository.existsByCodeAndUserAndActiveTrue(product.getCode(), user)) {
-            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong web của Owner này");
+        if (activeProductCodeExists(product.getCode(), null)) {
+            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong hệ thống");
         }
 
-        product.setUser(user);
+        product.setUser(owner);
         product.setActive(true);
 
         if (product.getTotalQuantity() == 0 && product.getQuantity() > 0) {
@@ -148,16 +160,17 @@ public class ProductService {
 
     @Transactional
     public Product update(Long id, Product updatedProduct, AppUser user) {
-        user = workspaceOwner(user);
+        AppUser owner = workspaceOwner(user);
 
         validateProduct(updatedProduct);
 
-        Product existing = getById(id, user);
+        Product existing = getById(id, owner);
 
-        if (productRepository.existsByCodeAndUserAndActiveTrueAndIdNot(updatedProduct.getCode(), user, id)) {
-            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong web của Owner này");
+        if (activeProductCodeExists(updatedProduct.getCode(), id)) {
+            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong hệ thống");
         }
 
+        existing.setUser(owner);
         existing.setCode(updatedProduct.getCode());
         existing.setName(updatedProduct.getName());
         existing.setCategory(updatedProduct.getCategory());
@@ -168,6 +181,7 @@ public class ProductService {
         existing.setExpiryDate(updatedProduct.getExpiryDate());
         existing.setSupplier(updatedProduct.getSupplier());
         existing.setDescription(updatedProduct.getDescription());
+        existing.setActive(true);
 
         existing.recalculateInventoryFields();
 
@@ -176,8 +190,6 @@ public class ProductService {
 
     @Transactional
     public String delete(Long id, AppUser user) {
-        user = workspaceOwner(user);
-
         Product product = getById(id, user);
 
         product.setActive(false);
@@ -188,9 +200,7 @@ public class ProductService {
 
     @Transactional
     public void deleteAll(AppUser user) {
-        user = workspaceOwner(user);
-
-        List<Product> all = productRepository.findByUserAndActiveTrue(user);
+        List<Product> all = activeProducts();
 
         all.forEach(product -> product.setActive(false));
 
@@ -221,6 +231,10 @@ public class ProductService {
 
     @Transactional
     public void decreaseStockForSale(Product product, int amount) {
+        if (product == null) {
+            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
+        }
+
         if (amount <= 0) {
             throw new IllegalArgumentException("Số lượng bán phải lớn hơn 0");
         }
@@ -247,18 +261,22 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    /*
+     * Không gọi tự động ở Dashboard/List vì dễ gây update hàng loạt.
+     * Chỉ dùng khi cần chủ động đồng bộ thủ công.
+     */
     @Transactional
     public void synchronizeProductStatistics(AppUser user) {
-        user = workspaceOwner(user);
+        AppUser owner = workspaceOwner(user);
 
-        List<Product> products = productRepository.findByUser(user);
+        List<Product> products = productRepository.findAll();
 
         if (products.isEmpty()) {
             return;
         }
 
-        Map<Long, Long> soldQtyMap = getSoldQtyMap(user);
-        Map<Long, Long> importedQtyMap = getTotalImportedMap(user);
+        Map<Long, Long> soldQtyMap = getSoldQtyMap(owner);
+        Map<Long, Long> importedQtyMap = getTotalImportedMap(owner);
 
         for (Product product : products) {
             long soldFromOrders = soldQtyMap.getOrDefault(product.getId(), 0L);
@@ -269,7 +287,6 @@ public class ProductService {
             int currentStock = product.getQuantity() == null ? 0 : product.getQuantity();
 
             int finalSold = Math.max(currentSold, safeLongToInt(soldFromOrders));
-
             int finalTotal = Math.max(currentTotal, currentStock + finalSold);
 
             if (imported > 0) {
@@ -280,6 +297,7 @@ public class ProductService {
                 finalTotal = finalSold;
             }
 
+            product.setUser(owner);
             product.setSoldQuantity(finalSold);
             product.setTotalQuantity(finalTotal);
             product.recalculateInventoryFields();
@@ -288,43 +306,44 @@ public class ProductService {
         productRepository.saveAll(products);
     }
 
+    @Transactional(readOnly = true)
     public long countProducts(AppUser user) {
-        user = workspaceOwner(user);
-        return productRepository.findByUserAndActiveTrue(user).size();
+        return activeProducts().size();
     }
 
+    @Transactional(readOnly = true)
     public List<Product> getExpiringProducts(AppUser user) {
-        user = workspaceOwner(user);
-
         LocalDate today = LocalDate.now();
 
-        return productRepository.findByUserAndActiveTrueAndExpiryDateBetween(
-                user,
-                today,
-                today.plusDays(30)
-        );
-    }
-
-    public List<Product> getLowStockProducts(AppUser user) {
-        user = workspaceOwner(user);
-
-        return productRepository.findByUserAndActiveTrueAndQuantityLessThanEqual(user, 5)
-                .stream()
-                .filter(p -> p.getQuantity() > 0)
+        return activeProducts().stream()
+                .filter(p -> p.getExpiryDate() != null)
+                .filter(p -> !p.getExpiryDate().isBefore(today))
+                .filter(p -> !p.getExpiryDate().isAfter(today.plusDays(30)))
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<Product> getLowStockProducts(AppUser user) {
+        return activeProducts().stream()
+                .filter(p -> p.getQuantity() > 0 && p.getQuantity() <= 5)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<Product> getTopLowStock(AppUser user) {
-        user = workspaceOwner(user);
-        return productRepository.findTop5ByUserAndActiveTrueOrderByQuantityAsc(user);
+        return activeProducts().stream()
+                .sorted(Comparator.comparing(Product::getQuantity))
+                .limit(5)
+                .toList();
     }
 
+    @Transactional(readOnly = true)
     public Map<Long, Long> getSoldQtyMap(AppUser user) {
-        user = workspaceOwner(user);
+        AppUser owner = workspaceOwner(user);
 
         Map<Long, Long> map = new HashMap<>();
 
-        List<Object[]> rows = orderItemRepository.findSoldQtyPerProduct(user);
+        List<Object[]> rows = orderItemRepository.findSoldQtyPerProduct(owner);
 
         for (Object[] row : rows) {
             Long productId = (Long) row[0];
@@ -336,12 +355,13 @@ public class ProductService {
         return map;
     }
 
+    @Transactional(readOnly = true)
     public Map<Long, Long> getTotalImportedMap(AppUser user) {
-        user = workspaceOwner(user);
+        AppUser owner = workspaceOwner(user);
 
         Map<Long, Long> map = new HashMap<>();
 
-        List<Object[]> rows = stockImportRepository.findTotalImportedPerProduct(user);
+        List<Object[]> rows = stockImportRepository.findTotalImportedPerProduct(owner);
 
         for (Object[] row : rows) {
             Long productId = (Long) row[0];
@@ -351,6 +371,36 @@ public class ProductService {
         }
 
         return map;
+    }
+
+    private List<Product> activeProducts() {
+        return productRepository.findAll()
+                .stream()
+                .filter(this::isActive)
+                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Long::compareTo)).reversed())
+                .toList();
+    }
+
+    private boolean isActive(Product product) {
+        return product != null && Boolean.TRUE.equals(product.getActive());
+    }
+
+    private boolean activeProductCodeExists(String code, Long exceptId) {
+        if (!StringUtils.hasText(code)) {
+            return false;
+        }
+
+        String normalizedCode = code.trim();
+
+        return productRepository.findAll()
+                .stream()
+                .filter(this::isActive)
+                .filter(p -> p.getCode() != null && p.getCode().trim().equalsIgnoreCase(normalizedCode))
+                .anyMatch(p -> exceptId == null || !exceptId.equals(p.getId()));
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword);
     }
 
     private AppUser workspaceOwner(AppUser user) {

@@ -19,11 +19,14 @@ public class AuthController {
     }
 
     @GetMapping("/login")
-    public String loginForm(HttpServletRequest request) {
+    public String loginForm(HttpServletRequest request,
+                            HttpServletResponse response) {
+        disableCache(response);
+
         HttpSession session = request.getSession(false);
 
         if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return "redirect:/";
+            return "redirect:/dashboard-warmup?ts=" + System.currentTimeMillis();
         }
 
         return "auth/login";
@@ -32,20 +35,24 @@ public class AuthController {
     @PostMapping("/login")
     public String login(@RequestParam(required = false) String username,
                         @RequestParam(required = false) String password,
+                        HttpServletResponse response,
                         Model model) {
+        disableCache(response);
+
         try {
             authService.login(username, password);
-            return "redirect:/";
+
+            /*
+             * Không redirect thẳng vào Dashboard nữa.
+             * Đi qua warmup để tránh lỗi Dashboard request đầu tiên bị 0.
+             */
+            return "redirect:/dashboard-warmup?login=1&ts=" + System.currentTimeMillis();
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             return "auth/login";
         }
     }
 
-    /*
-     * Không cho đăng ký Owner công khai.
-     * Owner là tài khoản được cấp sẵn khi triển khai ứng dụng.
-     */
     @GetMapping("/register")
     public String registerDisabled(RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute(
@@ -70,6 +77,14 @@ public class AuthController {
     public String logout(HttpServletRequest request,
                          HttpServletResponse response) {
         authService.logout(request, response);
-        return "redirect:/login";
+        disableCache(response);
+
+        return "redirect:/login?logout=" + System.currentTimeMillis();
+    }
+
+    private void disableCache(HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
     }
 }

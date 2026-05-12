@@ -10,6 +10,7 @@ import repository.UserRepository;
 import java.util.Locale;
 
 @Component
+@org.springframework.core.annotation.Order(1)
 public class OwnerAccountInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;

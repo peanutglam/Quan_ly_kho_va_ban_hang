@@ -4,6 +4,7 @@ import entity.AppUser;
 import entity.Product;
 import entity.Supplier;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -12,9 +13,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import service.AuthService;
 import service.ProductService;
 import service.SupplierService;
-import org.springframework.data.domain.Page;
-import java.util.List;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/products")
@@ -38,10 +36,11 @@ public class ProductController {
                                @RequestParam(value = "expiryStatus", required = false) String expiryStatus,
                                @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                                Model model) {
-        AppUser user = authService.getCurrentUser();
+
+        AppUser owner = authService.getWorkspaceOwner();
 
         Page<Product> productPage = productService.filterProductsPage(
-                user,
+                owner,
                 keyword,
                 stockStatus,
                 expiryStatus,
@@ -81,7 +80,7 @@ public class ProductController {
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
@@ -99,7 +98,7 @@ public class ProductController {
         }
 
         try {
-            productService.create(product, user);
+            productService.create(product, owner);
             return "redirect:/products";
         } catch (IllegalArgumentException e) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
@@ -114,9 +113,9 @@ public class ProductController {
     public String showEditForm(@PathVariable Long id, Model model) {
         authService.requireRole("OWNER", "STAFF");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
-        model.addAttribute("product", productService.getById(id, user));
+        model.addAttribute("product", productService.getById(id, owner));
         model.addAttribute("suppliers", supplierService.getAllSuppliers());
         model.addAttribute("pageTitle", "Cập nhật sản phẩm");
         model.addAttribute("formAction", "/products/edit/" + id);
@@ -132,7 +131,7 @@ public class ProductController {
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
@@ -150,7 +149,7 @@ public class ProductController {
         }
 
         try {
-            productService.update(id, product, user);
+            productService.update(id, product, owner);
             return "redirect:/products";
         } catch (IllegalArgumentException e) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
@@ -165,10 +164,10 @@ public class ProductController {
     public String deleteProduct(@PathVariable Long id, RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER", "STAFF");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
         try {
-            String msg = productService.delete(id, user);
+            String msg = productService.delete(id, owner);
             redirectAttrs.addFlashAttribute("successMessage", msg);
         } catch (Exception e) {
             redirectAttrs.addFlashAttribute("errorMessage", "Không thể xóa: " + e.getMessage());
@@ -177,9 +176,6 @@ public class ProductController {
         return "redirect:/products";
     }
 
-    /*
-     * Không cho xóa toàn bộ bằng GET nữa.
-     */
     @GetMapping("/delete-all")
     public String deleteAllByGet(RedirectAttributes redirectAttrs) {
         redirectAttrs.addFlashAttribute(
@@ -190,19 +186,16 @@ public class ProductController {
         return "redirect:/products";
     }
 
-    /*
-     * Xóa toàn bộ sản phẩm phải là OWNER và phải nhập đúng mật khẩu OWNER.
-     */
     @PostMapping("/delete-all")
     public String deleteAll(@RequestParam String ownerPassword,
                             RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
         try {
             authService.verifyOwnerPassword(ownerPassword);
-            productService.deleteAll(user);
+            productService.deleteAll(owner);
 
             redirectAttrs.addFlashAttribute(
                     "successMessage",
