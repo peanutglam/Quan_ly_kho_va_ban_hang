@@ -51,8 +51,6 @@ public class HomeController {
         model.addAttribute("isOwner", isOwner);
         model.addAttribute("isEmployee", isEmployee);
 
-        productService.synchronizeProductStatistics(workspaceOwner);
-
         model.addAttribute("totalProducts", productService.countProducts(workspaceOwner));
         model.addAttribute("totalSuppliers", supplierService.getAllSuppliers().size());
         model.addAttribute("totalOrders", orderService.countOrders());
