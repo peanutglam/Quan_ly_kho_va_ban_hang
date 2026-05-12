@@ -93,7 +93,14 @@ public class FlexibleSheetImportService {
         List<Map<String, String>> records = readRowsAsMap(sheetUrl, gid);
 
         int count = 0;
+        String batchCode = String.valueOf(System.currentTimeMillis());
+        Set<String> usedCodesInThisImport = new HashSet<>();
 
+        /*
+         * Vì import theo kiểu thay dữ liệu mới,
+         * các sản phẩm cũ của Owner sẽ bị ẩn.
+         * Nếu mã sản phẩm trùng, hệ thống sẽ cập nhật lại bản ghi cũ.
+         */
         List<Product> oldProducts = productRepository.findByUserAndActiveTrue(owner);
         oldProducts.forEach(product -> product.setActive(false));
         productRepository.saveAll(oldProducts);
@@ -105,21 +112,41 @@ public class FlexibleSheetImportService {
                 continue;
             }
 
-            String code = get(row, codeColumn);
+            String rawCode = get(row, codeColumn);
+            String code = normalizeCode(rawCode);
+
+            Product product;
 
             if (blank(code)) {
-                code = "SP-" + (count + 1);
+                code = createUniqueProductCode(batchCode, count + 1, usedCodesInThisImport);
+                product = new Product();
+            } else {
+                /*
+                 * Quan trọng:
+                 * Tìm theo code toàn hệ thống để tránh lỗi duplicate key trên Railway.
+                 * Vì đề tài hiện tại chỉ dùng 1 Owner chính nên việc lấy theo code toàn cục là phù hợp.
+                 */
+                Optional<Product> existingProduct = productRepository.findByCode(code);
+
+                if (existingProduct.isPresent()) {
+                    product = existingProduct.get();
+                } else {
+                    code = ensureUniqueProductCode(code, usedCodesInThisImport);
+                    product = new Product();
+                }
             }
+
+            usedCodesInThisImport.add(code);
 
             int stockQuantity = toInt(get(row, quantityColumn));
             int totalQuantity = toInt(get(row, totalQuantityColumn));
             int soldQuantity = toInt(get(row, soldQuantityColumn));
 
             /*
-             * Nếu sheet có tổng số lượng + số lượng xuất:
-             * tồn = tổng - xuất.
+             * Nếu sheet có tổng số lượng và số lượng xuất:
+             * tồn = tổng số lượng - số lượng xuất.
              *
-             * Nếu sheet chỉ có cột tồn cũ:
+             * Nếu sheet chỉ có tồn:
              * tổng = tồn + xuất.
              */
             if (totalQuantity <= 0) {
@@ -129,10 +156,6 @@ public class FlexibleSheetImportService {
             if (soldQuantity > totalQuantity) {
                 totalQuantity = soldQuantity;
             }
-
-            Product product = productRepository
-                    .findByCodeAndUser(code, owner)
-                    .orElse(new Product());
 
             product.setCode(code);
             product.setName(name);
@@ -178,6 +201,8 @@ public class FlexibleSheetImportService {
         List<Map<String, String>> records = readRowsAsMap(sheetUrl, gid);
 
         int count = 0;
+        String batchCode = String.valueOf(System.currentTimeMillis());
+        Set<String> usedOrderCodesInThisImport = new HashSet<>();
 
         clearOrdersForUser(owner);
 
@@ -189,15 +214,22 @@ public class FlexibleSheetImportService {
                 continue;
             }
 
-            String orderCode = get(row, orderCodeColumn);
+            String rawOrderCode = get(row, orderCodeColumn);
+            String orderCode = normalizeCode(rawOrderCode);
 
             if (blank(orderCode)) {
-                orderCode = "ORD-SHEET-" + (count + 1);
+                orderCode = createUniqueOrderCode(batchCode, count + 1, usedOrderCodesInThisImport);
+            } else {
+                orderCode = ensureUniqueOrderCode(orderCode, batchCode, count + 1, usedOrderCodesInThisImport);
             }
+
+            usedOrderCodesInThisImport.add(orderCode);
+
+            int rowIndex = count + 1;
 
             Product product = productRepository
                     .findFirstByNameContainingIgnoreCaseAndUserAndActiveTrue(productName, owner)
-                    .orElseGet(() -> createAutoProduct(productName, owner));
+                    .orElseGet(() -> createAutoProduct(productName, owner, batchCode, rowIndex));
 
             int quantity = toInt(get(row, quantityColumn));
 
@@ -234,6 +266,11 @@ public class FlexibleSheetImportService {
             order.setCustomerAddress(get(row, addressColumn));
             order.setStatus(normalizeStatus(get(row, statusColumn)));
             order.setUser(owner);
+
+            /*
+             * Các field này yêu cầu Order.java đã có:
+             * shippingFee, totalBill, customerDeposit, remainingAmount.
+             */
             order.setShippingFee(shippingFee);
             order.setCustomerDeposit(customerDeposit);
             order.setTotalBill(finalTotalBill);
@@ -353,10 +390,15 @@ public class FlexibleSheetImportService {
                 });
     }
 
-    private Product createAutoProduct(String productName, AppUser owner) {
+    private Product createAutoProduct(String productName,
+                                      AppUser owner,
+                                      String batchCode,
+                                      int rowIndex) {
         Product product = new Product();
 
-        product.setCode("AUTO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        String code = createUniqueProductCode(batchCode, rowIndex, new HashSet<>());
+
+        product.setCode(code);
         product.setName(productName);
         product.setCategory("Mỹ phẩm");
         product.setBrand("Chưa xác định");
@@ -386,6 +428,70 @@ public class FlexibleSheetImportService {
 
             orderRepository.delete(order);
         }
+
+        orderRepository.flush();
+    }
+
+    private String createUniqueProductCode(String batchCode,
+                                           int rowIndex,
+                                           Set<String> usedCodesInThisImport) {
+        String base = "SP-SHEET-" + batchCode + "-" + rowIndex;
+        return ensureUniqueProductCode(base, usedCodesInThisImport);
+    }
+
+    private String ensureUniqueProductCode(String baseCode,
+                                           Set<String> usedCodesInThisImport) {
+        String cleanBase = normalizeCode(baseCode);
+
+        if (blank(cleanBase)) {
+            cleanBase = "SP-SHEET-" + System.currentTimeMillis();
+        }
+
+        String candidate = cleanBase;
+        int index = 1;
+
+        while (usedCodesInThisImport.contains(candidate) || productRepository.existsByCode(candidate)) {
+            candidate = cleanBase + "-" + index;
+            index++;
+        }
+
+        return candidate;
+    }
+
+    private String createUniqueOrderCode(String batchCode,
+                                         int rowIndex,
+                                         Set<String> usedOrderCodesInThisImport) {
+        String base = "ORD-SHEET-" + batchCode + "-" + rowIndex;
+        return ensureUniqueOrderCode(base, batchCode, rowIndex, usedOrderCodesInThisImport);
+    }
+
+    private String ensureUniqueOrderCode(String baseCode,
+                                         String batchCode,
+                                         int rowIndex,
+                                         Set<String> usedOrderCodesInThisImport) {
+        String cleanBase = normalizeCode(baseCode);
+
+        if (blank(cleanBase)) {
+            cleanBase = "ORD-SHEET-" + batchCode + "-" + rowIndex;
+        }
+
+        String candidate = cleanBase;
+        int index = 1;
+
+        while (usedOrderCodesInThisImport.contains(candidate) || orderRepository.existsByOrderCode(candidate)) {
+            candidate = cleanBase + "-" + index;
+            index++;
+        }
+
+        return candidate;
+    }
+
+    private String normalizeCode(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.trim();
     }
 
     private String get(Map<String, String> row, String column) {
@@ -482,12 +588,16 @@ public class FlexibleSheetImportService {
             return OrderService.STATUS_CANCELLED;
         }
 
-        if (s.contains("giao") || s.contains("hoàn thành")) {
+        if (s.contains("giao")) {
             return OrderService.STATUS_DELIVERED;
         }
 
-        if (s.contains("xác nhận")) {
-            return OrderService.STATUS_PENDING;
+        if (s.contains("hoàn thành")) {
+            return OrderService.STATUS_COMPLETED;
+        }
+
+        if (s.contains("đang")) {
+            return OrderService.STATUS_SHIPPING;
         }
 
         return OrderService.STATUS_PENDING;
