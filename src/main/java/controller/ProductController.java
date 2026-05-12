@@ -12,7 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import service.AuthService;
 import service.ProductService;
 import service.SupplierService;
-
+import org.springframework.data.domain.Page;
 import java.util.List;
 import java.util.Map;
 
@@ -36,17 +36,25 @@ public class ProductController {
     public String listProducts(@RequestParam(value = "keyword", required = false) String keyword,
                                @RequestParam(value = "stockStatus", required = false) String stockStatus,
                                @RequestParam(value = "expiryStatus", required = false) String expiryStatus,
+                               @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                                Model model) {
         AppUser user = authService.getCurrentUser();
 
-        List<Product> products = productService.filterProducts(user, keyword, stockStatus, expiryStatus);
+        Page<Product> productPage = productService.filterProductsPage(
+                user,
+                keyword,
+                stockStatus,
+                expiryStatus,
+                page,
+                30
+        );
 
-        Map<Long, Long> soldQtyMap = productService.getSoldQtyMap(user);
-        Map<Long, Long> importedQtyMap = productService.getTotalImportedMap(user);
+        model.addAttribute("products", productPage.getContent());
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("currentPage", productPage.getNumber());
+        model.addAttribute("totalPages", productPage.getTotalPages());
+        model.addAttribute("totalElements", productPage.getTotalElements());
 
-        model.addAttribute("products", products);
-        model.addAttribute("soldQtyMap", soldQtyMap);
-        model.addAttribute("importedQtyMap", importedQtyMap);
         model.addAttribute("keyword", keyword);
         model.addAttribute("stockStatus", stockStatus);
         model.addAttribute("expiryStatus", expiryStatus);

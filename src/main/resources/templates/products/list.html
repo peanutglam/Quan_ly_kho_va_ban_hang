@@ -20,7 +20,10 @@
     <div class="page-header">
       <div>
         <h2>Quản lý sản phẩm</h2>
-        <p>Danh sách sản phẩm đang hoạt động</p>
+        <p>
+          Hiển thị 30 sản phẩm mỗi trang.
+          <span th:if="${totalElements != null}" th:text="'Tổng: ' + ${totalElements} + ' sản phẩm'"></span>
+        </p>
       </div>
 
       <div class="header-actions">
@@ -72,8 +75,8 @@
       </button>
     </form>
 
-    <div class="table-responsive data-table-wrap">
-      <table class="table table-hover align-middle data-table">
+    <div class="data-table-wrap table-scroll-box">
+      <table class="table table-hover align-middle data-table product-data-table">
         <thead>
         <tr>
           <th>Mã SP</th>
@@ -141,7 +144,7 @@
           <td th:text="${p.supplier != null ? p.supplier.name : ''}"></td>
 
           <td>
-            <div class="row-actions">
+            <div class="row-actions no-wrap-actions">
               <a class="btn btn-sm btn-outline-primary"
                  th:href="@{/products/edit/{id}(id=${p.id})}">
                 Sửa
@@ -159,6 +162,24 @@
       </table>
     </div>
 
+    <div class="pagination-bar" th:if="${totalPages != null and totalPages > 1}">
+      <a class="btn btn-light btn-soft"
+         th:classappend="${currentPage == 0} ? ' disabled'"
+         th:href="@{/products(page=${currentPage - 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
+        ← Trang trước
+      </a>
+
+      <span th:text="'Trang ' + ${currentPage + 1} + ' / ' + ${totalPages}">
+        Trang 1 / 1
+      </span>
+
+      <a class="btn btn-light btn-soft"
+         th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'"
+         th:href="@{/products(page=${currentPage + 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
+        Trang sau →
+      </a>
+    </div>
+
   </section>
 </div>
 
@@ -170,15 +191,11 @@
       "Bạn có chắc chắn muốn tiếp tục không?"
     );
 
-    if (!firstConfirm) {
-      return;
-    }
+    if (!firstConfirm) return;
 
     const password = prompt("Nhập mật khẩu Owner để xác nhận xóa toàn bộ sản phẩm:");
 
-    if (password === null) {
-      return;
-    }
+    if (password === null) return;
 
     if (password.trim() === "") {
       alert("Bạn bắt buộc phải nhập mật khẩu Owner.");
@@ -190,9 +207,7 @@
       "Bạn chắc chắn muốn thực hiện?"
     );
 
-    if (!finalConfirm) {
-      return;
-    }
+    if (!finalConfirm) return;
 
     document.getElementById("deleteAllProductsPassword").value = password;
     document.getElementById("deleteAllProductsForm").submit();

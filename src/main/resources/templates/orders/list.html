@@ -20,7 +20,10 @@
     <div class="page-header">
       <div>
         <h2>Đơn hàng online</h2>
-        <p>Danh sách đơn, sản phẩm và tổng bill</p>
+        <p>
+          Hiển thị 30 đơn hàng mỗi trang.
+          <span th:if="${totalElements != null}" th:text="'Tổng: ' + ${totalElements} + ' đơn hàng'"></span>
+        </p>
       </div>
 
       <div class="header-actions">
@@ -47,7 +50,7 @@
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-    <form method="get" th:action="@{/orders}" class="filter-bar">
+    <form method="get" th:action="@{/orders}" class="filter-bar order-filter-bar">
       <input type="text"
              class="form-control"
              name="keyword"
@@ -69,21 +72,21 @@
     </form>
 
     <div class="summary-strip mb-3">
-      <span>Tổng bill cuối cùng</span>
+      <span>Tổng bill trang hiện tại</span>
       <strong th:text="${#numbers.formatDecimal(grandTotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">
         0 đ
       </strong>
     </div>
 
-    <div class="table-responsive data-table-wrap">
-      <table class="table table-hover align-middle data-table">
+    <div class="data-table-wrap table-scroll-box">
+      <table class="table table-hover align-middle data-table order-data-table">
         <thead>
         <tr>
           <th>Mã đơn</th>
           <th>Khách hàng</th>
           <th>Sản phẩm</th>
           <th>Đơn giá</th>
-          <th>Thành tiền từng sản phẩm</th>
+          <th>Thành tiền</th>
           <th>Tổng bill</th>
           <th>Trạng thái</th>
           <th>Ngày tạo</th>
@@ -116,14 +119,14 @@
           <td>
             <div class="stacked-cell"
                  th:each="item : ${o.items}"
-                 th:text="${#numbers.formatDecimal(item.unitPrice, 0, 'COMMA', 0, 'POINT')}">
+                 th:text="${#numbers.formatDecimal(item.displayUnitPrice, 0, 'COMMA', 0, 'POINT')}">
             </div>
           </td>
 
           <td>
             <div class="stacked-cell"
                  th:each="item : ${o.items}"
-                 th:text="${#numbers.formatDecimal(item.subtotal, 0, 'COMMA', 0, 'POINT')}">
+                 th:text="${#numbers.formatDecimal(item.displaySubtotal, 0, 'COMMA', 0, 'POINT')}">
             </div>
           </td>
 
@@ -135,10 +138,10 @@
             <span class="badge bg-light text-dark border" th:text="${o.status}"></span>
           </td>
 
-          <td th:text="${o.createdAt}"></td>
+          <td th:text="${#temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
 
           <td>
-            <div class="row-actions">
+            <div class="row-actions no-wrap-actions">
               <a class="btn btn-sm btn-outline-primary"
                  th:href="@{/orders/detail/{id}(id=${o.id})}">
                 Xem
@@ -156,6 +159,24 @@
       </table>
     </div>
 
+    <div class="pagination-bar" th:if="${totalPages != null and totalPages > 1}">
+      <a class="btn btn-light btn-soft"
+         th:classappend="${currentPage == 0} ? ' disabled'"
+         th:href="@{/orders(page=${currentPage - 1}, keyword=${keyword}, status=${status})}">
+        ← Trang trước
+      </a>
+
+      <span th:text="'Trang ' + ${currentPage + 1} + ' / ' + ${totalPages}">
+        Trang 1 / 1
+      </span>
+
+      <a class="btn btn-light btn-soft"
+         th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'"
+         th:href="@{/orders(page=${currentPage + 1}, keyword=${keyword}, status=${status})}">
+        Trang sau →
+      </a>
+    </div>
+
   </section>
 </div>
 
@@ -168,15 +189,11 @@
       "Bạn có chắc chắn muốn tiếp tục không?"
     );
 
-    if (!firstConfirm) {
-      return;
-    }
+    if (!firstConfirm) return;
 
     const password = prompt("Nhập mật khẩu Owner để xác nhận xóa toàn bộ đơn hàng:");
 
-    if (password === null) {
-      return;
-    }
+    if (password === null) return;
 
     if (password.trim() === "") {
       alert("Bạn bắt buộc phải nhập mật khẩu Owner.");
@@ -188,9 +205,7 @@
       "Bạn chắc chắn muốn thực hiện?"
     );
 
-    if (!finalConfirm) {
-      return;
-    }
+    if (!finalConfirm) return;
 
     document.getElementById("deleteAllOrdersPassword").value = password;
     document.getElementById("deleteAllOrdersForm").submit();

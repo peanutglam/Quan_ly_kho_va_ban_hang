@@ -8,7 +8,9 @@ import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.ProductRepository;
 import repository.StockImportRepository;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -92,7 +94,36 @@ public class ProductService {
         return productRepository.findByIdAndUserAndActiveTrue(id, user)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm trong web của Owner này"));
     }
+    @Transactional(readOnly = true)
+    public Page<Product> filterProductsPage(AppUser user,
+                                            String keyword,
+                                            String stockStatus,
+                                            String expiryStatus,
+                                            int page,
+                                            int size) {
+        user = workspaceOwner(user);
 
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 30 : Math.min(size, 30);
+
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
+        String stock = StringUtils.hasText(stockStatus) ? stockStatus.trim() : "";
+        String expiry = StringUtils.hasText(expiryStatus) ? expiryStatus.trim() : "";
+
+        LocalDate today = LocalDate.now();
+
+        return productRepository.filterProductsPaged(
+                user,
+                kw,
+                stock,
+                expiry,
+                today,
+                today.plusDays(30),
+                pageable
+        );
+    }
     @Transactional
     public Product create(Product product, AppUser user) {
         user = workspaceOwner(user);

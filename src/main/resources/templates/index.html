@@ -172,6 +172,7 @@
 
         <section class="warning-grid">
 
+            <!-- SẢN PHẨM SẮP HẾT HÀNG -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hàng</h5>
@@ -186,10 +187,10 @@
                     Không có sản phẩm tồn kho thấp.
                 </div>
 
-                <div class="table-responsive"
+                <div class="dashboard-scroll-box"
                      th:if="${lowStockProducts != null and !#lists.isEmpty(lowStockProducts)}">
 
-                    <table class="table table-hover">
+                    <table class="table table-hover dashboard-mini-table">
                         <thead>
                         <tr>
                             <th>Sản phẩm</th>
@@ -216,6 +217,7 @@
                 </div>
             </div>
 
+            <!-- SẢN PHẨM SẮP HẾT HẠN -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hạn</h5>
@@ -230,10 +232,10 @@
                     Không có sản phẩm sắp hết hạn trong 30 ngày.
                 </div>
 
-                <div class="table-responsive"
+                <div class="dashboard-scroll-box"
                      th:if="${expiringProducts != null and !#lists.isEmpty(expiringProducts)}">
 
-                    <table class="table table-hover">
+                    <table class="table table-hover dashboard-mini-table">
                         <thead>
                         <tr>
                             <th>Sản phẩm</th>
@@ -262,6 +264,7 @@
 
         </section>
 
+        <!-- TOP SẢN PHẨM BÁN CHẠY -->
         <section class="panel-card">
             <div class="panel-header">
                 <h5>Top sản phẩm bán chạy</h5>
@@ -276,10 +279,10 @@
                 Chưa có dữ liệu bán hàng.
             </div>
 
-            <div class="table-responsive"
+            <div class="dashboard-scroll-box dashboard-scroll-box-large"
                  th:if="${bestSellingProducts != null and !#lists.isEmpty(bestSellingProducts)}">
 
-                <table class="table table-hover">
+                <table class="table table-hover dashboard-mini-table">
                     <thead>
                     <tr>
                         <th>Sản phẩm</th>

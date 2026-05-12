@@ -9,6 +9,9 @@ import service.AuthService;
 import service.OrderService;
 import service.ProductService;
 import service.ShopProfileService;
+import entity.Order;
+import org.springframework.data.domain.Page;
+import java.math.BigDecimal;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,17 +38,24 @@ public class OrderController {
     @GetMapping
     public String listOrders(@RequestParam(value = "keyword", required = false) String keyword,
                              @RequestParam(value = "status", required = false) String status,
+                             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                              Model model) {
-        AppUser user = authService.getCurrentUser();
+        authService.getCurrentUser();
 
-        var orders = orderService.filterOrders(keyword, status);
+        Page<Order> orderPage = orderService.filterOrdersPaged(keyword, status, page, 30);
 
-        java.math.BigDecimal grandTotal = orders.stream()
-                .map(o -> o.getTotalAmount() == null ? java.math.BigDecimal.ZERO : o.getTotalAmount())
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        BigDecimal grandTotal = orderPage.getContent()
+                .stream()
+                .map(o -> o.getTotalAmount() == null ? BigDecimal.ZERO : o.getTotalAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        model.addAttribute("orders", orders);
+        model.addAttribute("orders", orderPage.getContent());
+        model.addAttribute("orderPage", orderPage);
+        model.addAttribute("currentPage", orderPage.getNumber());
+        model.addAttribute("totalPages", orderPage.getTotalPages());
+        model.addAttribute("totalElements", orderPage.getTotalElements());
         model.addAttribute("grandTotal", grandTotal);
+
         model.addAttribute("keyword", keyword);
         model.addAttribute("status", status);
 
