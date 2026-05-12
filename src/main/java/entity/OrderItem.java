@@ -3,7 +3,7 @@ package entity;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
-
+import java.math.RoundingMode;
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
@@ -73,5 +73,36 @@ public class OrderItem {
 
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
+    }
+    @Transient
+    public BigDecimal getDisplaySubtotal() {
+        if (subtotal != null && subtotal.signum() > 0) {
+            return subtotal;
+        }
+
+        if (order != null && order.getTotalAmount() != null && order.getTotalAmount().signum() > 0) {
+            return order.getTotalAmount();
+        }
+
+        BigDecimal price = unitPrice == null ? BigDecimal.ZERO : unitPrice;
+        int qty = quantity == null || quantity <= 0 ? 1 : quantity;
+
+        return price.multiply(BigDecimal.valueOf(qty));
+    }
+
+    @Transient
+    public BigDecimal getDisplayUnitPrice() {
+        if (unitPrice != null && unitPrice.signum() > 0) {
+            return unitPrice;
+        }
+
+        int qty = quantity == null || quantity <= 0 ? 1 : quantity;
+        BigDecimal displaySubtotal = getDisplaySubtotal();
+
+        if (displaySubtotal.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return displaySubtotal.divide(BigDecimal.valueOf(qty), 0, RoundingMode.HALF_UP);
     }
 }

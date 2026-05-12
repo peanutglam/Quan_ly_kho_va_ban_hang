@@ -96,8 +96,8 @@
         <td th:text="${iter.index + 1}">1</td>
         <td th:text="${item.product != null ? item.product.name : 'Sản phẩm đã ẩn'}">Sản phẩm</td>
         <td th:text="${item.quantity}">1</td>
-        <td th:text="${#numbers.formatDecimal(item.unitPrice, 0, 'COMMA', 0, 'POINT')}">0</td>
-        <td th:text="${#numbers.formatDecimal(item.subtotal, 0, 'COMMA', 0, 'POINT')}">0</td>
+        <td th:text="${#numbers.formatDecimal(item.displayUnitPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+        <td th:text="${#numbers.formatDecimal(item.displaySubtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
       </tr>
       </tbody>
     </table>
@@ -106,7 +106,22 @@
       <span>Tổng thanh toán:</span>
       <strong th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</strong>
     </div>
+    <div class="invoice-money-breakdown">
+      <p>
+        <span>Phí ship:</span>
+        <b th:text="${#numbers.formatDecimal(order.shippingFee, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
+      </p>
 
+      <p>
+        <span>Khách cọc:</span>
+        <b th:text="${#numbers.formatDecimal(order.customerDeposit, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
+      </p>
+
+      <p>
+        <span>Còn phải thu:</span>
+        <b th:text="${#numbers.formatDecimal(order.remainingAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
+      </p>
+    </div>
     <div class="invoice-footer">
       <p th:text="${shopProfile.thankYouMessage}">Cảm ơn quý khách đã mua hàng!</p>
       <p th:text="${shopProfile.invoiceFooter}">Hóa đơn được tạo tự động từ hệ thống SmartInventory.</p>

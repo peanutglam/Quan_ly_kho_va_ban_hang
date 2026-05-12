@@ -10,6 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.OrderRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -31,7 +34,23 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductService productService;
     private final AuthService authService;
+    @Transactional(readOnly = true)
+    public Page<Order> filterOrdersPaged(String keyword,
+                                         String status,
+                                         int page,
+                                         int size) {
+        AppUser owner = authService.getWorkspaceOwner();
 
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 30 : Math.min(size, 30);
+
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
+        String st = StringUtils.hasText(status) ? status.trim() : "";
+
+        return orderRepository.filterOrdersPaged(owner, kw, st, pageable);
+    }
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         ProductService productService,
