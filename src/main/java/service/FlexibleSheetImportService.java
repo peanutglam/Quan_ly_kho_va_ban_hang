@@ -75,7 +75,50 @@ public class FlexibleSheetImportService {
 
         return headers;
     }
+    private Product findReusableProductByCode(String code, AppUser owner) {
+        if (blank(code)) {
+            return null;
+        }
 
+        List<Product> products = productRepository.findAllByCodeOrderByIdAsc(code);
+
+        if (products == null || products.isEmpty()) {
+            return null;
+        }
+
+        Product selected = null;
+
+        for (Product product : products) {
+            if (product.getUser() != null
+                    && product.getUser().getId() != null
+                    && owner.getId() != null
+                    && product.getUser().getId().equals(owner.getId())) {
+                selected = product;
+                break;
+            }
+        }
+
+        if (selected == null) {
+            selected = products.get(0);
+        }
+
+        selected.setUser(owner);
+        selected.setActive(true);
+
+        for (Product product : products) {
+            if (product.getId() == null || selected.getId() == null) {
+                continue;
+            }
+
+            if (!product.getId().equals(selected.getId())) {
+                product.setUser(owner);
+                product.setActive(false);
+                productRepository.save(product);
+            }
+        }
+
+        return selected;
+    }
     @Transactional(rollbackFor = Exception.class)
     public int importProducts(String sheetUrl,
                               String gid,
@@ -115,10 +158,10 @@ public class FlexibleSheetImportService {
                 code = createUniqueProductCode(batchCode, count + 1, usedCodesInThisImport);
                 product = new Product();
             } else {
-                Optional<Product> existingProduct = productRepository.findByCode(code);
+                Product existingProduct = findReusableProductByCode(code, owner);
 
-                if (existingProduct.isPresent()) {
-                    product = existingProduct.get();
+                if (existingProduct != null) {
+                    product = existingProduct;
                 } else {
                     code = ensureUniqueProductCode(code, usedCodesInThisImport);
                     product = new Product();
@@ -367,20 +410,22 @@ public class FlexibleSheetImportService {
             name = "Chưa xác định";
         }
 
-        String supplierName = name;
+        String supplierName = name.trim();
 
-        return supplierRepository.findByNameAndUser(supplierName, owner)
-                .orElseGet(() -> {
-                    Supplier supplier = new Supplier();
+        List<Supplier> suppliers = supplierRepository.findAllByNameAndUserOrderByIdAsc(supplierName, owner);
 
-                    supplier.setName(supplierName);
-                    supplier.setPhone("");
-                    supplier.setEmail("");
-                    supplier.setAddress("");
-                    supplier.setUser(owner);
+        if (suppliers != null && !suppliers.isEmpty()) {
+            return suppliers.get(0);
+        }
 
-                    return supplierRepository.save(supplier);
-                });
+        Supplier supplier = new Supplier();
+        supplier.setName(supplierName);
+        supplier.setPhone("");
+        supplier.setEmail("");
+        supplier.setAddress("");
+        supplier.setUser(owner);
+
+        return supplierRepository.save(supplier);
     }
 
     private Product createAutoProduct(String productName,
@@ -597,4 +642,5 @@ public class FlexibleSheetImportService {
 
         return OrderService.STATUS_PENDING;
     }
+
 }

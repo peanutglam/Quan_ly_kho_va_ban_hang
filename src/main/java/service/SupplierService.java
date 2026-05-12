@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import repository.SupplierRepository;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -20,16 +21,22 @@ public class SupplierService {
         this.authService = authService;
     }
 
+    /*
+     * 1 ứng dụng = 1 cửa hàng.
+     * Đọc danh sách NCC toàn hệ thống để dashboard không bị phụ thuộc session user_id.
+     */
+    @Transactional(readOnly = true)
     public List<Supplier> getAllSuppliers() {
-        AppUser owner = authService.getWorkspaceOwner();
-        return supplierRepository.findByUserOrderByIdDesc(owner);
+        return supplierRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Supplier::getId, Comparator.nullsLast(Long::compareTo)).reversed())
+                .toList();
     }
 
+    @Transactional(readOnly = true)
     public Supplier getSupplierById(Long id) {
-        AppUser owner = authService.getWorkspaceOwner();
-
-        return supplierRepository.findByIdAndUser(id, owner)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhà cung cấp trong web của Owner này"));
+        return supplierRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhà cung cấp"));
     }
 
     @Transactional

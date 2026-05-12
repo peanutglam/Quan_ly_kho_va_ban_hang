@@ -10,6 +10,7 @@ import repository.StockImportRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -30,9 +31,16 @@ public class StockImportService {
         this.authService = authService;
     }
 
+    /*
+     * 1 ứng dụng = 1 cửa hàng.
+     * Đọc lịch sử nhập toàn hệ thống để dashboard không bị phụ thuộc session user_id.
+     */
+    @Transactional(readOnly = true)
     public List<StockImport> getAllImports() {
-        AppUser owner = authService.getWorkspaceOwner();
-        return stockImportRepository.findByUserOrderByIdDesc(owner);
+        return stockImportRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(StockImport::getId, Comparator.nullsLast(Long::compareTo)).reversed())
+                .toList();
     }
 
     @Transactional

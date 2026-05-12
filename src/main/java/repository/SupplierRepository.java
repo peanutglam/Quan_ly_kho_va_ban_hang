@@ -11,4 +11,5 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
     List<Supplier> findByUserOrderByIdDesc(AppUser user);
     Optional<Supplier> findByIdAndUser(Long id, AppUser user);
     Optional<Supplier> findByNameAndUser(String name, AppUser user);
+    List<Supplier> findAllByNameAndUserOrderByIdAsc(String name, AppUser user);
 }

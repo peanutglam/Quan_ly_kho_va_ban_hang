@@ -1,17 +1,25 @@
 package service;
 
 import entity.AppUser;
-
+import entity.Order;
+import entity.Product;
+import entity.StockImport;
+import entity.Supplier;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import repository.OrderRepository;
+import repository.ProductRepository;
+import repository.StockImportRepository;
+import repository.SupplierRepository;
 import repository.UserRepository;
 
 import java.util.ArrayList;
@@ -29,19 +37,30 @@ public class AuthService {
 
     private static final int SESSION_TIMEOUT_SECONDS = 30 * 60;
 
+    @Value("${app.owner.username:owner}")
+    private String configuredOwnerUsername;
+
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
+    private final SupplierRepository supplierRepository;
+    private final StockImportRepository stockImportRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository,
+                       ProductRepository productRepository,
+                       OrderRepository orderRepository,
+                       SupplierRepository supplierRepository,
+                       StockImportRepository stockImportRepository,
                        BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+        this.supplierRepository = supplierRepository;
+        this.stockImportRepository = stockImportRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    /*
-     * Hàm này giữ lại để tránh lỗi nếu code cũ còn gọi,
-     * nhưng giao diện không còn cho đăng ký Owner công khai nữa.
-     */
     @Transactional
     public AppUser registerOwner(AppUser user, String confirmPassword) {
         validateCommonUserInfo(user);
@@ -61,10 +80,6 @@ public class AuthService {
         return registerOwner(user, user.getPassword());
     }
 
-    /*
-     * Đăng nhập chung cho cả Owner và Employee.
-     * Không chia 2 form Owner/Employee nữa.
-     */
     @Transactional
     public AppUser login(String username, String password) {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
@@ -84,11 +99,28 @@ public class AuthService {
             throw new IllegalArgumentException("Sai tài khoản hoặc mật khẩu");
         }
 
+        AppUser canonicalOwner = getCanonicalOwner();
+        canonicalOwner = normalizeCanonicalOwner(canonicalOwner);
+
         String role = normalizeRole(user.getRole());
 
-        if (!AppUser.ROLE_OWNER.equals(role)) {
-            if (user.getOwner() == null || Boolean.FALSE.equals(user.getOwner().getActive())) {
-                throw new IllegalArgumentException("Tài khoản nhân viên chưa được gắn với Owner hợp lệ");
+        if (AppUser.ROLE_OWNER.equals(role)) {
+            if (!sameUser(user, canonicalOwner)) {
+                throw new IllegalArgumentException(
+                        "Chỉ tài khoản Owner chính được phép đăng nhập. Vui lòng dùng tài khoản: "
+                                + canonicalOwner.getUsername()
+                );
+            }
+
+            user = canonicalOwner;
+        } else {
+            if (user.getOwner() == null
+                    || user.getOwner().getId() == null
+                    || !user.getOwner().getId().equals(canonicalOwner.getId())
+                    || Boolean.FALSE.equals(user.getOwner().getActive())) {
+
+                user.setOwner(canonicalOwner);
+                userRepository.save(user);
             }
         }
 
@@ -97,13 +129,12 @@ public class AuthService {
             userRepository.save(user);
         }
 
+        repairDataOwnership(canonicalOwner);
+
         startAuthenticatedSession(user);
         return user;
     }
 
-    /*
-     * Giữ lại overload này để các controller/service cũ không bị lỗi compile.
-     */
     @Transactional
     public AppUser login(String username, String password, String accountType) {
         return login(username, password);
@@ -132,14 +163,9 @@ public class AuthService {
         return user;
     }
 
-    /*
-     * Với đề tài hiện tại:
-     * - Owner là tài khoản quản trị chính của cửa hàng.
-     * - Employee được gắn với Owner để dùng chung dữ liệu cửa hàng.
-     */
     public AppUser getWorkspaceOwner() {
-        AppUser currentUser = getCurrentUser();
-        return getWorkspaceOwner(currentUser);
+        getCurrentUser();
+        return getCanonicalOwner();
     }
 
     public AppUser getWorkspaceOwner(AppUser user) {
@@ -147,17 +173,172 @@ public class AuthService {
             throw new IllegalArgumentException("Bạn cần đăng nhập");
         }
 
-        String role = normalizeRole(user.getRole());
+        return getCanonicalOwner();
+    }
 
-        if (AppUser.ROLE_OWNER.equals(role)) {
-            return user;
+    private AppUser getCanonicalOwner() {
+        String ownerUsername = configuredOwnerUsername == null
+                ? "owner"
+                : configuredOwnerUsername.trim().toLowerCase(Locale.ROOT);
+
+        return userRepository.findFirstByUsernameOrderByIdAsc(ownerUsername)
+                .or(() -> userRepository.findFirstByUsernameAndActiveTrueOrderByIdAsc(ownerUsername))
+                .or(() -> userRepository.findFirstByRoleAndActiveTrueOrderByIdAsc(AppUser.ROLE_OWNER))
+                .or(() -> userRepository.findFirstByRoleOrderByIdAsc(AppUser.ROLE_OWNER))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Chưa có tài khoản Owner chính. Vui lòng kiểm tra OwnerAccountInitializer hoặc database."
+                ));
+    }
+
+    @Transactional
+    protected AppUser normalizeCanonicalOwner(AppUser owner) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Chưa có tài khoản Owner chính");
         }
 
-        if (user.getOwner() == null) {
-            throw new IllegalArgumentException("Tài khoản nhân viên chưa được gắn với Owner");
+        boolean changed = false;
+
+        String normalizedUsername = owner.getUsername() == null
+                ? configuredOwnerUsername
+                : owner.getUsername().trim().toLowerCase(Locale.ROOT);
+
+        if (!normalizedUsername.equals(owner.getUsername())) {
+            owner.setUsername(normalizedUsername);
+            changed = true;
         }
 
-        return user.getOwner();
+        if (!AppUser.ROLE_OWNER.equals(normalizeRole(owner.getRole()))) {
+            owner.setRole(AppUser.ROLE_OWNER);
+            changed = true;
+        }
+
+        if (owner.getOwner() != null) {
+            owner.setOwner(null);
+            changed = true;
+        }
+
+        if (Boolean.FALSE.equals(owner.getActive())) {
+            owner.setActive(true);
+            changed = true;
+        }
+
+        if (changed) {
+            owner = userRepository.save(owner);
+        }
+
+        return owner;
+    }
+
+    @Transactional
+    protected void repairDataOwnership(AppUser owner) {
+        if (owner == null || owner.getId() == null) {
+            return;
+        }
+
+        repairProducts(owner);
+        repairOrders(owner);
+        repairSuppliers(owner);
+        repairStockImports(owner);
+        repairEmployees(owner);
+        disableExtraOwners(owner);
+    }
+
+    private void repairProducts(AppUser owner) {
+        List<Product> changedProducts = new ArrayList<>();
+
+        for (Product product : productRepository.findAll()) {
+            if (!sameUser(product.getUser(), owner)) {
+                product.setUser(owner);
+                changedProducts.add(product);
+            }
+        }
+
+        if (!changedProducts.isEmpty()) {
+            productRepository.saveAll(changedProducts);
+        }
+    }
+
+    private void repairOrders(AppUser owner) {
+        List<Order> changedOrders = new ArrayList<>();
+
+        for (Order order : orderRepository.findAll()) {
+            if (!sameUser(order.getUser(), owner)) {
+                order.setUser(owner);
+                changedOrders.add(order);
+            }
+        }
+
+        if (!changedOrders.isEmpty()) {
+            orderRepository.saveAll(changedOrders);
+        }
+    }
+
+    private void repairSuppliers(AppUser owner) {
+        List<Supplier> changedSuppliers = new ArrayList<>();
+
+        for (Supplier supplier : supplierRepository.findAll()) {
+            if (!sameUser(supplier.getUser(), owner)) {
+                supplier.setUser(owner);
+                changedSuppliers.add(supplier);
+            }
+        }
+
+        if (!changedSuppliers.isEmpty()) {
+            supplierRepository.saveAll(changedSuppliers);
+        }
+    }
+
+    private void repairStockImports(AppUser owner) {
+        List<StockImport> changedImports = new ArrayList<>();
+
+        for (StockImport stockImport : stockImportRepository.findAll()) {
+            if (!sameUser(stockImport.getUser(), owner)) {
+                stockImport.setUser(owner);
+                changedImports.add(stockImport);
+            }
+        }
+
+        if (!changedImports.isEmpty()) {
+            stockImportRepository.saveAll(changedImports);
+        }
+    }
+
+    private void repairEmployees(AppUser owner) {
+        List<AppUser> changedUsers = new ArrayList<>();
+
+        for (AppUser user : userRepository.findAll()) {
+            if (user.getId() == null || user.getId().equals(owner.getId())) {
+                continue;
+            }
+
+            String role = normalizeRole(user.getRole());
+
+            if (!AppUser.ROLE_OWNER.equals(role) && !sameUser(user.getOwner(), owner)) {
+                user.setOwner(owner);
+                changedUsers.add(user);
+            }
+        }
+
+        if (!changedUsers.isEmpty()) {
+            userRepository.saveAll(changedUsers);
+        }
+    }
+
+    private void disableExtraOwners(AppUser owner) {
+        List<AppUser> changedUsers = new ArrayList<>();
+
+        for (AppUser otherOwner : userRepository.findByRoleAndActiveTrueOrderByIdAsc(AppUser.ROLE_OWNER)) {
+            if (otherOwner.getId() != null
+                    && !otherOwner.getId().equals(owner.getId())
+                    && Boolean.TRUE.equals(otherOwner.getActive())) {
+                otherOwner.setActive(false);
+                changedUsers.add(otherOwner);
+            }
+        }
+
+        if (!changedUsers.isEmpty()) {
+            userRepository.saveAll(changedUsers);
+        }
     }
 
     public void logout(HttpServletRequest request,
@@ -301,6 +482,7 @@ public class AuthService {
 
         logout(request, response);
     }
+
     public void verifyOwnerPassword(String ownerPassword) {
         requireRole(AppUser.ROLE_OWNER);
 
@@ -314,6 +496,7 @@ public class AuthService {
             throw new IllegalArgumentException("Mật khẩu Owner không đúng. Không thể thực hiện thao tác xóa.");
         }
     }
+
     private void startAuthenticatedSession(AppUser user) {
         ServletRequestAttributes attributes =
                 (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
@@ -435,5 +618,13 @@ public class AuthService {
         }
 
         return value;
+    }
+
+    private boolean sameUser(AppUser a, AppUser b) {
+        return a != null
+                && b != null
+                && a.getId() != null
+                && b.getId() != null
+                && a.getId().equals(b.getId());
     }
 }

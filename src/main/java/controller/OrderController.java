@@ -1,6 +1,8 @@
 package controller;
 
 import entity.AppUser;
+import entity.Order;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -9,10 +11,8 @@ import service.AuthService;
 import service.OrderService;
 import service.ProductService;
 import service.ShopProfileService;
-import entity.Order;
-import org.springframework.data.domain.Page;
-import java.math.BigDecimal;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,8 +40,6 @@ public class OrderController {
                              @RequestParam(value = "status", required = false) String status,
                              @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                              Model model) {
-        authService.getCurrentUser();
-
         Page<Order> orderPage = orderService.filterOrdersPaged(keyword, status, page, 30);
 
         BigDecimal grandTotal = orderPage.getContent()
@@ -66,9 +64,9 @@ public class OrderController {
     public String showCreateOrder(Model model) {
         authService.requireRole("OWNER", "SALE");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
-        model.addAttribute("products", productService.getAllProducts(null, user));
+        model.addAttribute("products", productService.getAllProducts(null, owner));
 
         return "orders/form";
     }
@@ -82,7 +80,7 @@ public class OrderController {
                               Model model) {
         authService.requireRole("OWNER", "SALE");
 
-        AppUser user = authService.getCurrentUser();
+        AppUser owner = authService.getWorkspaceOwner();
 
         List<Long> productIds = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
@@ -104,6 +102,7 @@ public class OrderController {
                         try {
                             qty = Integer.parseInt(quantityStrs.get(i).trim());
                         } catch (Exception ignored) {
+                            qty = 1;
                         }
                     }
 
@@ -117,7 +116,7 @@ public class OrderController {
         }
 
         if (productIds.isEmpty()) {
-            model.addAttribute("products", productService.getAllProducts(null, user));
+            model.addAttribute("products", productService.getAllProducts(null, owner));
             model.addAttribute("errorMessage", "Vui lòng chọn ít nhất một sản phẩm.");
             return "orders/form";
         }
@@ -126,7 +125,7 @@ public class OrderController {
             orderService.createOrder(customerName, customerPhone, customerAddress, productIds, quantities);
             return "redirect:/orders";
         } catch (IllegalArgumentException e) {
-            model.addAttribute("products", productService.getAllProducts(null, user));
+            model.addAttribute("products", productService.getAllProducts(null, owner));
             model.addAttribute("errorMessage", e.getMessage());
             return "orders/form";
         }
@@ -142,10 +141,16 @@ public class OrderController {
 
     @PostMapping("/status/{id}")
     public String updateStatus(@PathVariable Long id,
-                               @RequestParam String status) {
+                               @RequestParam String status,
+                               RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER", "SALE");
 
-        orderService.updateStatus(id, status);
+        try {
+            orderService.updateStatus(id, status);
+            redirectAttrs.addFlashAttribute("successMessage", "Đã cập nhật trạng thái đơn hàng.");
+        } catch (Exception e) {
+            redirectAttrs.addFlashAttribute("errorMessage", "Không thể cập nhật trạng thái: " + e.getMessage());
+        }
 
         return "redirect:/orders/detail/" + id;
     }
@@ -165,9 +170,6 @@ public class OrderController {
         return "redirect:/orders";
     }
 
-    /*
-     * Không cho xóa toàn bộ bằng GET nữa.
-     */
     @GetMapping("/delete-all")
     public String deleteAllByGet(RedirectAttributes redirectAttrs) {
         redirectAttrs.addFlashAttribute(
@@ -178,9 +180,6 @@ public class OrderController {
         return "redirect:/orders";
     }
 
-    /*
-     * Xóa toàn bộ đơn hàng phải là OWNER và phải nhập đúng mật khẩu OWNER.
-     */
     @PostMapping("/delete-all")
     public String deleteAll(@RequestParam String ownerPassword,
                             RedirectAttributes redirectAttrs) {

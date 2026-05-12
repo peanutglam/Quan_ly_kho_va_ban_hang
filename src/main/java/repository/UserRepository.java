@@ -17,4 +17,14 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
     List<AppUser> findByOwnerOrderByIdDesc(AppUser owner);
 
     Optional<AppUser> findByIdAndOwner(Long id, AppUser owner);
+
+    Optional<AppUser> findFirstByUsernameAndActiveTrueOrderByIdAsc(String username);
+
+    Optional<AppUser> findFirstByUsernameOrderByIdAsc(String username);
+
+    Optional<AppUser> findFirstByRoleAndActiveTrueOrderByIdAsc(String role);
+
+    Optional<AppUser> findFirstByRoleOrderByIdAsc(String role);
+
+    List<AppUser> findByRoleAndActiveTrueOrderByIdAsc(String role);
 }
