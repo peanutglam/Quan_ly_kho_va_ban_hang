@@ -76,7 +76,7 @@ public class FlexibleSheetImportService {
         return headers;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int importProducts(String sheetUrl,
                               String gid,
                               String codeColumn,
@@ -95,15 +95,9 @@ public class FlexibleSheetImportService {
         int count = 0;
         String batchCode = String.valueOf(System.currentTimeMillis());
         Set<String> usedCodesInThisImport = new HashSet<>();
+        Set<Long> importedProductIds = new HashSet<>();
 
-        /*
-         * Vì import theo kiểu thay dữ liệu mới,
-         * các sản phẩm cũ của Owner sẽ bị ẩn.
-         * Nếu mã sản phẩm trùng, hệ thống sẽ cập nhật lại bản ghi cũ.
-         */
         List<Product> oldProducts = productRepository.findByUserAndActiveTrue(owner);
-        oldProducts.forEach(product -> product.setActive(false));
-        productRepository.saveAll(oldProducts);
 
         for (Map<String, String> row : records) {
             String name = get(row, nameColumn);
@@ -121,11 +115,6 @@ public class FlexibleSheetImportService {
                 code = createUniqueProductCode(batchCode, count + 1, usedCodesInThisImport);
                 product = new Product();
             } else {
-                /*
-                 * Quan trọng:
-                 * Tìm theo code toàn hệ thống để tránh lỗi duplicate key trên Railway.
-                 * Vì đề tài hiện tại chỉ dùng 1 Owner chính nên việc lấy theo code toàn cục là phù hợp.
-                 */
                 Optional<Product> existingProduct = productRepository.findByCode(code);
 
                 if (existingProduct.isPresent()) {
@@ -142,13 +131,6 @@ public class FlexibleSheetImportService {
             int totalQuantity = toInt(get(row, totalQuantityColumn));
             int soldQuantity = toInt(get(row, soldQuantityColumn));
 
-            /*
-             * Nếu sheet có tổng số lượng và số lượng xuất:
-             * tồn = tổng số lượng - số lượng xuất.
-             *
-             * Nếu sheet chỉ có tồn:
-             * tổng = tồn + xuất.
-             */
             if (totalQuantity <= 0) {
                 totalQuantity = stockQuantity + soldQuantity;
             }
@@ -175,15 +157,26 @@ public class FlexibleSheetImportService {
 
             product.recalculateInventoryFields();
 
-            productRepository.save(product);
+            Product savedProduct = productRepository.save(product);
+
+            if (savedProduct.getId() != null) {
+                importedProductIds.add(savedProduct.getId());
+            }
 
             count++;
+        }
+
+        for (Product oldProduct : oldProducts) {
+            if (oldProduct.getId() != null && !importedProductIds.contains(oldProduct.getId())) {
+                oldProduct.setActive(false);
+                productRepository.save(oldProduct);
+            }
         }
 
         return count;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int importOrders(String sheetUrl,
                             String gid,
                             String orderCodeColumn,
@@ -217,15 +210,15 @@ public class FlexibleSheetImportService {
             String rawOrderCode = get(row, orderCodeColumn);
             String orderCode = normalizeCode(rawOrderCode);
 
+            int rowIndex = count + 1;
+
             if (blank(orderCode)) {
-                orderCode = createUniqueOrderCode(batchCode, count + 1, usedOrderCodesInThisImport);
+                orderCode = createUniqueOrderCode(batchCode, rowIndex, usedOrderCodesInThisImport);
             } else {
-                orderCode = ensureUniqueOrderCode(orderCode, batchCode, count + 1, usedOrderCodesInThisImport);
+                orderCode = ensureUniqueOrderCode(orderCode, batchCode, rowIndex, usedOrderCodesInThisImport);
             }
 
             usedOrderCodesInThisImport.add(orderCode);
-
-            int rowIndex = count + 1;
 
             Product product = productRepository
                     .findFirstByNameContainingIgnoreCaseAndUserAndActiveTrue(productName, owner)
@@ -516,11 +509,13 @@ public class FlexibleSheetImportService {
                     .replace(",", ".")
                     .replaceAll("[^0-9.\\-]", "");
 
-            if (blank(value)) {
+            if (blank(value) || "-".equals(value)) {
                 return 0;
             }
 
-            return (int) Math.round(Double.parseDouble(value));
+            int result = (int) Math.round(Double.parseDouble(value));
+
+            return Math.max(result, 0);
         } catch (Exception e) {
             return 0;
         }

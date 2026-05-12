@@ -33,11 +33,9 @@ public class ProductService {
         this.authService = authService;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<Product> getAllProducts(String keyword, AppUser user) {
         user = workspaceOwner(user);
-
-        synchronizeProductStatistics(user);
 
         if (!StringUtils.hasText(keyword)) {
             return productRepository.findByUserAndActiveTrueOrderByIdDesc(user);
@@ -46,7 +44,7 @@ public class ProductService {
         return productRepository.searchByUserAndKeyword(user, keyword.trim());
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<Product> filterProducts(AppUser user,
                                         String keyword,
                                         String stockStatus,

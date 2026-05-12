@@ -260,16 +260,53 @@ public class OrderService {
     }
 
     private void restoreOrderStock(Order order) {
+        if (order == null || order.getItems() == null) {
+            return;
+        }
+
         for (OrderItem item : order.getItems()) {
+            if (item == null || item.getProduct() == null) {
+                continue;
+            }
+
             int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+
+            if (quantity <= 0) {
+                continue;
+            }
+
             productService.restoreStockFromSale(item.getProduct(), quantity);
         }
     }
 
     private void decreaseOrderStock(Order order) {
+        if (order == null || order.getItems() == null) {
+            return;
+        }
+
         for (OrderItem item : order.getItems()) {
+            if (item == null || item.getProduct() == null) {
+                continue;
+            }
+
             int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
-            productService.decreaseStockForSale(item.getProduct(), quantity);
+
+            if (quantity <= 0) {
+                continue;
+            }
+
+            Product product = item.getProduct();
+
+            if (product.getQuantity() < quantity) {
+                throw new IllegalArgumentException(
+                        "Không thể khôi phục trạng thái đơn hàng vì sản phẩm '" +
+                                product.getName() +
+                                "' không đủ tồn kho. Hiện còn " +
+                                product.getQuantity()
+                );
+            }
+
+            productService.decreaseStockForSale(product, quantity);
         }
     }
 
