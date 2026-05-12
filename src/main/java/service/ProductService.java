@@ -377,7 +377,23 @@ public class ProductService {
         return productRepository.findAll()
                 .stream()
                 .filter(this::isActive)
-                .sorted(Comparator.comparing(Product::getId, Comparator.nullsLast(Long::compareTo)).reversed())
+                .sorted(
+                        Comparator
+                                // Còn hàng lên trước, hết hàng xuống cuối
+                                .comparing((Product p) -> p.getQuantity() == null || p.getQuantity() <= 0)
+
+                                // Trong nhóm còn hàng, tồn kho nhiều hơn lên trước
+                                .thenComparing(
+                                        p -> p.getQuantity() == null ? 0 : p.getQuantity(),
+                                        Comparator.reverseOrder()
+                                )
+
+                                // Nếu tồn kho bằng nhau thì sản phẩm mới hơn lên trước
+                                .thenComparing(
+                                        p -> p.getId() == null ? 0L : p.getId(),
+                                        Comparator.reverseOrder()
+                                )
+                )
                 .toList();
     }
 
