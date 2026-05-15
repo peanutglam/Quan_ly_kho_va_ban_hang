@@ -266,7 +266,13 @@ public class ProductService {
         }
         return productRepository.searchPublicProducts(keyword.trim());
     }
-
+    @Transactional(readOnly = true)
+    public Product getPublicProductById(Long id) {
+        return productRepository.findById(id)
+                .filter(p -> Boolean.TRUE.equals(p.getActive()))
+                .filter(p -> p.getQuantity() != null && p.getQuantity() > 0)
+                .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại hoặc đã hết hàng"));
+    }
     private AppUser workspaceOwner(AppUser user) {
         if (user == null) return authService.getWorkspaceOwner();
         return authService.getWorkspaceOwner(user);

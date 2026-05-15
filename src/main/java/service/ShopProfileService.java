@@ -18,23 +18,24 @@ public class ShopProfileService {
         this.authService = authService;
     }
 
+    /*
+     * Dùng trong khu vực quản trị.
+     * Có yêu cầu đăng nhập.
+     */
+    @Transactional
     public ShopProfile getCurrentProfile() {
         AppUser owner = authService.getWorkspaceOwner();
+        return getOrCreateProfile(owner);
+    }
 
-        return shopProfileRepository.findByUser(owner).orElseGet(() -> {
-            ShopProfile profile = new ShopProfile();
-
-            profile.setShopName("Tên cửa hàng");
-            profile.setSlogan("Quản lý kho và bán hàng");
-            profile.setPhone("");
-            profile.setAddress("");
-            profile.setLogoUrl("");
-            profile.setThankYouMessage("Cảm ơn quý khách đã mua hàng!");
-            profile.setInvoiceFooter("Hóa đơn được tạo tự động từ hệ thống SmartInventory.");
-            profile.setUser(owner);
-
-            return shopProfileRepository.save(profile);
-        });
+    /*
+     * Dùng cho trang bán hàng công khai /shop, /cart, /checkout.
+     * Không yêu cầu đăng nhập.
+     */
+    @Transactional
+    public ShopProfile getPublicProfile() {
+        AppUser owner = authService.getSystemOwner();
+        return getOrCreateProfile(owner);
     }
 
     @Transactional
@@ -50,5 +51,22 @@ public class ShopProfileService {
         profile.setInvoiceFooter(form.getInvoiceFooter());
 
         shopProfileRepository.save(profile);
+    }
+
+    private ShopProfile getOrCreateProfile(AppUser owner) {
+        return shopProfileRepository.findByUser(owner).orElseGet(() -> {
+            ShopProfile profile = new ShopProfile();
+
+            profile.setShopName("Tên cửa hàng");
+            profile.setSlogan("Quản lý kho và bán hàng");
+            profile.setPhone("");
+            profile.setAddress("");
+            profile.setLogoUrl("");
+            profile.setThankYouMessage("Cảm ơn quý khách đã mua hàng!");
+            profile.setInvoiceFooter("Hóa đơn được tạo tự động từ hệ thống SmartInventory.");
+            profile.setUser(owner);
+
+            return shopProfileRepository.save(profile);
+        });
     }
 }

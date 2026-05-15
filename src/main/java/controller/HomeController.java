@@ -31,11 +31,18 @@ public class HomeController {
         this.authService = authService;
     }
 
+    /*
+     * Trang đầu tiên của web là trang cửa hàng công khai.
+     * Người dùng không cần đăng nhập vẫn xem được sản phẩm.
+     */
     @GetMapping("/")
     public String root() {
-        return "redirect:/dashboard";
+        return "redirect:/shop";
     }
 
+    /*
+     * Dashboard là khu vực quản trị, bắt buộc đăng nhập.
+     */
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         AppUser currentUser;
@@ -49,11 +56,16 @@ public class HomeController {
         AppUser owner = authService.getWorkspaceOwner(currentUser);
 
         String role = currentUser.getRole() == null ? "" : currentUser.getRole().trim();
-        boolean isOwner = "OWNER".equalsIgnoreCase(role);
+        boolean isOwner = "OWNER".equalsIgnoreCase(role)
+                || "ADMIN".equalsIgnoreCase(role)
+                || "ROLE_OWNER".equalsIgnoreCase(role);
+
+        boolean isEmployee = !isOwner;
 
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("workspaceOwner", owner);
         model.addAttribute("isOwner", isOwner);
+        model.addAttribute("isEmployee", isEmployee);
 
         model.addAttribute("totalProducts", productService.countProducts(owner));
         model.addAttribute("totalSuppliers", supplierService.countSuppliers());
@@ -63,11 +75,13 @@ public class HomeController {
 
         model.addAttribute("pendingOrders", orderService.countByStatus(OrderService.STATUS_PENDING));
         model.addAttribute("shippingOrders", orderService.countByStatus(OrderService.STATUS_SHIPPING));
+
         model.addAttribute(
                 "completedOrders",
                 orderService.countByStatus(OrderService.STATUS_COMPLETED)
                         + orderService.countByStatus(OrderService.STATUS_DELIVERED)
         );
+
         model.addAttribute("cancelledOrders", orderService.countByStatus(OrderService.STATUS_CANCELLED));
 
         model.addAttribute("lowStockProducts", productService.getLowStockProducts(owner));

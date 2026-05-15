@@ -74,7 +74,7 @@ public class AuthController {
         authService.logout(request, response);
         disableCache(response);
 
-        return "redirect:/login";
+        return "redirect:/shop";
     }
 
     private void disableCache(HttpServletResponse response) {

@@ -45,7 +45,9 @@ public class OrderService {
     }
 
     private AppUser owner() { return authService.getWorkspaceOwner(); }
-
+    private AppUser publicOwner() {
+        return authService.getSystemOwner();
+    }
     public Page<Order> filterOrdersPaged(String keyword, String status, int page, int size) {
         return orderRepository.filterOrdersPaged(owner(),
                 keyword == null ? "" : keyword.trim(),
@@ -126,7 +128,7 @@ public class OrderService {
     public Order createPublicOrder(String customerName, String customerPhone,
                                    String customerAddress, String note,
                                    Map<Long, Integer> cartItems) {
-        AppUser ownerUser = owner();
+        AppUser ownerUser = publicOwner();
         if (cartItems == null || cartItems.isEmpty()) throw new IllegalArgumentException("Giỏ hàng trống");
 
         Order order = new Order();
@@ -144,7 +146,7 @@ public class OrderService {
             int qty = entry.getValue();
             if (qty <= 0) continue;
 
-            Product product = productService.getById(pid, ownerUser);
+            Product product = productService.getPublicProductById(pid);
             if (product.getQuantity() < qty)
                 throw new IllegalArgumentException("Sản phẩm '" + product.getName() + "' chỉ còn " + product.getQuantity());
 

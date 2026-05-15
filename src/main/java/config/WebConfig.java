@@ -7,21 +7,34 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    private final Authinterceptor authInterceptor;
+    private final Authinterceptor authinterceptor;
 
-    public WebConfig(Authinterceptor authInterceptor) {
-        this.authInterceptor = authInterceptor;
+    public WebConfig(Authinterceptor authinterceptor) {
+        this.authinterceptor = authinterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(authInterceptor)
+        registry.addInterceptor(authinterceptor)
+                .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/login", "/register",
-                        "/css/**", "/js/**", "/images/**", "/webjars/**",
-                        "/favicon.ico", "/error",
-                        // Public shop routes
-                        "/shop/**", "/cart/**", "/checkout/**", "/order-success/**"
+                        "/",
+                        "/shop",
+                        "/shop/**",
+                        "/cart",
+                        "/cart/**",
+                        "/checkout",
+                        "/order-success",
+                        "/login",
+                        "/logout",
+                        "/register",
+                        "/css/**",
+                        "/js/**",
+                        "/images/**",
+                        "/img/**",
+                        "/webjars/**",
+                        "/favicon.ico",
+                        "/error"
                 );
     }
 }

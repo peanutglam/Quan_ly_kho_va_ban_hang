@@ -5,19 +5,17 @@
     <title>SmartInventory | Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="stylesheet" th:href="@{/css/style.css}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 
-<body class="dashboard-bg"
-      th:with="loginUser=${currentUser != null ? currentUser : session.currentUser}">
+<body class="dashboard-bg" th:with="loginUser=${currentUser != null ? currentUser : session.currentUser}">
 
 <div class="dashboard-layout">
 
     <aside class="sidebar">
         <div class="brand-box">
             <div class="brand-logo">SI</div>
-
             <div>
                 <h4>SmartInventory</h4>
                 <p>Kho &amp; bán hàng</p>
@@ -25,36 +23,15 @@
         </div>
 
         <nav class="side-menu">
-            <a th:href="@{/dashboard}" class="active">
-                📊 Dashboard
-            </a>
+            <a th:href="@{/dashboard}" class="active">📊 Dashboard</a>
+            <a th:href="@{/products}">📦 Sản phẩm</a>
+            <a th:href="@{/orders}">🧾 Đơn hàng</a>
+            <a th:href="@{/suppliers}">🏢 Nhà cung cấp</a>
+            <a th:href="@{/imports}">⬇️ Nhập hàng</a>
+            <a th:href="@{/reports/daily}">📈 Báo cáo</a>
+            <a th:href="@{/shop}" target="_blank">🛍️ Cửa hàng</a>
 
-            <a th:href="@{/products}">
-                📦 Sản phẩm
-            </a>
-
-            <a th:href="@{/orders}">
-                🧾 Đơn hàng
-            </a>
-
-            <a th:href="@{/suppliers}">
-                🏢 Nhà cung cấp
-            </a>
-
-            <a th:href="@{/imports}">
-                ⬇️ Nhập hàng
-            </a>
-
-            <a th:href="@{/reports/daily}">
-                📊 Báo cáo
-            </a>
-
-            <a th:href="@{/shop}" target="_blank">
-                🛒 Cửa hàng
-            </a>
-
-            <a th:if="${isOwner == true}"
-               th:href="@{/shop-profile}">
+            <a th:if="${isOwner == true}" th:href="@{/shop-profile}">
                 🏪 Cấu hình hóa đơn
             </a>
 
@@ -62,8 +39,7 @@
                 📄 Import Google Sheet
             </a>
 
-            <a th:if="${isOwner == true}"
-               th:href="@{/account}">
+            <a th:if="${isOwner == true}" th:href="@{/account}">
                 👥 Quản lý tài khoản
             </a>
 
@@ -71,8 +47,7 @@
                 🔐 Đổi mật khẩu
             </a>
 
-            <a th:if="${isEmployee == true}"
-               th:href="@{/account/delete-my-account}">
+            <a th:if="${isEmployee == true}" th:href="@{/account/delete-my-account}">
                 ⚠️ Xóa tài khoản
             </a>
 
@@ -94,19 +69,17 @@
                         User
                     </b>
 
-                    <span class="badge bg-primary"
-                          th:if="${isOwner == true}">
+                    <span class="badge bg-primary" th:if="${isOwner == true}">
                         Owner
                     </span>
 
-                    <span class="badge bg-secondary"
-                          th:if="${isEmployee == true}">
+                    <span class="badge bg-secondary" th:if="${isEmployee == true}">
                         Employee
                     </span>
                 </p>
 
                 <p class="text-muted mb-0">
-                    Ứng dụng quản lý kho hàng và bán hàng cho cửa hàng mỹ phẩm.
+                    Tổng quan hoạt động kho hàng, đơn hàng và doanh thu của cửa hàng.
                 </p>
             </div>
 
@@ -163,10 +136,7 @@
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hàng</h5>
-
-                    <a th:href="@{/products(stockStatus='LOW_STOCK')}">
-                        Xem tất cả
-                    </a>
+                    <a th:href="@{/products(stockStatus='LOW_STOCK')}">Xem tất cả</a>
                 </div>
 
                 <div th:if="${lowStockProducts == null or #lists.isEmpty(lowStockProducts)}"
@@ -187,10 +157,7 @@
 
                         <tbody>
                         <tr th:each="p : ${lowStockProducts}">
-                            <td th:text="${p.name}">
-                                Tên sản phẩm
-                            </td>
-
+                            <td th:text="${p.name}">Tên sản phẩm</td>
                             <td>
                                 <span class="badge bg-warning text-dark"
                                       th:text="${p.quantity == null ? 0 : p.quantity}">
@@ -207,10 +174,7 @@
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hạn</h5>
-
-                    <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">
-                        Xem tất cả
-                    </a>
+                    <a th:href="@{/products(expiryStatus='EXPIRING_SOON')}">Xem tất cả</a>
                 </div>
 
                 <div th:if="${expiringProducts == null or #lists.isEmpty(expiringProducts)}"
@@ -231,10 +195,7 @@
 
                         <tbody>
                         <tr th:each="p : ${expiringProducts}">
-                            <td th:text="${p.name}">
-                                Tên sản phẩm
-                            </td>
-
+                            <td th:text="${p.name}">Tên sản phẩm</td>
                             <td>
                                 <span class="badge bg-warning text-dark"
                                       th:text="${p.expiryDate}">
@@ -253,10 +214,7 @@
         <section class="panel-card">
             <div class="panel-header">
                 <h5>Top sản phẩm bán chạy</h5>
-
-                <a th:href="@{/orders}">
-                    Xem đơn hàng
-                </a>
+                <a th:href="@{/orders}">Xem đơn hàng</a>
             </div>
 
             <div th:if="${bestSellingProducts == null or #lists.isEmpty(bestSellingProducts)}"
@@ -278,9 +236,7 @@
 
                     <tbody>
                     <tr th:each="item : ${bestSellingProducts}">
-                        <td th:text="${item[0]}">
-                            Tên sản phẩm
-                        </td>
+                        <td th:text="${item[0]}">Tên sản phẩm</td>
 
                         <td>
                             <span class="badge bg-success"
