@@ -21,16 +21,17 @@ public class SupplierService {
         this.authService = authService;
     }
 
-    /*
-     * 1 ứng dụng = 1 cửa hàng.
-     * Đọc danh sách NCC toàn hệ thống để dashboard không bị phụ thuộc session user_id.
-     */
     @Transactional(readOnly = true)
     public List<Supplier> getAllSuppliers() {
         return supplierRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(Supplier::getId, Comparator.nullsLast(Long::compareTo)).reversed())
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countSuppliers() {
+        return supplierRepository.count();
     }
 
     @Transactional(readOnly = true)

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đặt hàng</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    :root{--primary:#7c3aed} body{background:#f8f7ff;font-family:'Segoe UI',sans-serif}
+    .navbar-shop{background:var(--primary)} .navbar-shop a{color:#fff!important}
+    .form-card{border:none;border-radius:14px;box-shadow:0 2px 12px rgba(124,58,237,.1);background:#fff;padding:32px}
+    .summary-card{background:linear-gradient(135deg,var(--primary) 0%,#a78bfa 100%);color:#fff;border-radius:14px;padding:24px}
+    .btn-order{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:12px 32px;font-weight:700;font-size:1.05rem}
+    .btn-order:hover{background:#6d28d9;color:#fff}
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-shop shadow-sm mb-4">
+  <div class="container">
+    <a class="navbar-brand fw-bold" th:href="@{/shop}"><i class="fa fa-store me-2"></i>Cửa hàng</a>
+    <a th:href="@{/cart}" class="btn btn-outline-light btn-sm"><i class="fa fa-arrow-left me-1"></i>Quay lại giỏ</a>
+  </div>
+</nav>
+<div class="container pb-5" style="max-width:900px;">
+  <h4 class="fw-bold mb-4"><i class="fa fa-clipboard-list me-2" style="color:var(--primary)"></i>Đặt hàng</h4>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+  <div class="row g-4">
+    <div class="col-md-7">
+      <div class="form-card">
+        <h6 class="fw-bold mb-3">Thông tin giao hàng</h6>
+        <form th:action="@{/checkout}" method="post">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Họ tên <span class="text-danger">*</span></label>
+            <input type="text" name="customerName" class="form-control" required placeholder="Nguyễn Văn A"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
+            <input type="tel" name="customerPhone" class="form-control" required placeholder="0912345678"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Địa chỉ giao hàng</label>
+            <input type="text" name="customerAddress" class="form-control" placeholder="Số nhà, đường, phường/xã, tỉnh/thành"/>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Ghi chú</label>
+            <textarea name="note" class="form-control" rows="2" placeholder="Ghi chú cho đơn hàng (không bắt buộc)"></textarea>
+          </div>
+          <button type="submit" class="btn-order btn w-100">
+            <i class="fa fa-check-circle me-2"></i>Xác nhận đặt hàng
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="summary-card">
+        <h6 class="fw-bold mb-3">Đơn hàng của bạn</h6>
+        <div th:each="item : ${cartItems}" class="d-flex justify-content-between mb-2 small">
+          <span th:text="${item.productName} + ' x' + ${item.quantity}">SP x1</span>
+          <span th:text="${#numbers.formatDecimal(item.subtotal,0,'COMMA',0,'POINT')} + ' đ'">0đ</span>
+        </div>
+        <hr class="border-white opacity-50"/>
+        <div class="d-flex justify-content-between fw-bold fs-5">
+          <span>Tổng tiền:</span>
+          <span th:text="${#numbers.formatDecimal(cartTotal,0,'COMMA',0,'POINT')} + ' đ'">0đ</span>
+        </div>
+        <p class="mt-3 small opacity-75">Trạng thái đơn: <strong>Chờ xác nhận</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

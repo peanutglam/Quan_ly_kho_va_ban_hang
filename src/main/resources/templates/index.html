@@ -45,12 +45,15 @@
                 ⬇️ Nhập hàng
             </a>
 
-            <a th:if="${isOwner == true
-                       or (loginUser != null
-                           and loginUser.role != null
-                           and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
-                                or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
-                                or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
+            <a th:href="@{/reports/daily}">
+                📊 Báo cáo
+            </a>
+
+            <a th:href="@{/shop}" target="_blank">
+                🛒 Cửa hàng
+            </a>
+
+            <a th:if="${isOwner == true}"
                th:href="@{/shop-profile}">
                 🏪 Cấu hình hóa đơn
             </a>
@@ -59,12 +62,7 @@
                 📄 Import Google Sheet
             </a>
 
-            <a th:if="${isOwner == true
-                       or (loginUser != null
-                           and loginUser.role != null
-                           and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
-                                or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
-                                or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
+            <a th:if="${isOwner == true}"
                th:href="@{/account}">
                 👥 Quản lý tài khoản
             </a>
@@ -97,22 +95,12 @@
                     </b>
 
                     <span class="badge bg-primary"
-                          th:if="${isOwner == true
-                                  or (loginUser != null
-                                      and loginUser.role != null
-                                      and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
-                                           or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
-                                           or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}">
+                          th:if="${isOwner == true}">
                         Owner
                     </span>
 
                     <span class="badge bg-secondary"
-                          th:if="${isEmployee == true
-                                  or (loginUser != null
-                                      and loginUser.role != null
-                                      and !(#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
-                                            or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
-                                            or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}">
+                          th:if="${isEmployee == true}">
                         Employee
                     </span>
                 </p>
@@ -140,7 +128,7 @@
             <div>
                 <span>Doanh thu hoàn thành</span>
 
-                <h2 th:text="${#numbers.formatDecimal(totalRevenue != null ? totalRevenue : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                <h2 th:text="${#numbers.formatDecimal(totalRevenue == null ? 0 : totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' đ'">
                     0 đ
                 </h2>
 
@@ -151,28 +139,27 @@
         <section class="stat-grid">
             <div class="stat-card">
                 <p>📦 Tổng sản phẩm</p>
-                <h3 th:text="${totalProducts != null ? totalProducts : 0}">0</h3>
+                <h3 th:text="${totalProducts == null ? 0 : totalProducts}">0</h3>
             </div>
 
             <div class="stat-card">
                 <p>🏢 Nhà cung cấp</p>
-                <h3 th:text="${totalSuppliers != null ? totalSuppliers : 0}">0</h3>
+                <h3 th:text="${totalSuppliers == null ? 0 : totalSuppliers}">0</h3>
             </div>
 
             <div class="stat-card">
                 <p>🧾 Đơn hàng</p>
-                <h3 th:text="${totalOrders != null ? totalOrders : 0}">0</h3>
+                <h3 th:text="${totalOrders == null ? 0 : totalOrders}">0</h3>
             </div>
 
             <div class="stat-card">
                 <p>⬇️ Lượt nhập</p>
-                <h3 th:text="${totalImports != null ? totalImports : 0}">0</h3>
+                <h3 th:text="${totalImports == null ? 0 : totalImports}">0</h3>
             </div>
         </section>
 
         <section class="warning-grid">
 
-            <!-- SẢN PHẨM SẮP HẾT HÀNG -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hàng</h5>
@@ -206,7 +193,7 @@
 
                             <td>
                                 <span class="badge bg-warning text-dark"
-                                      th:text="${p.inventoryQuantity}">
+                                      th:text="${p.quantity == null ? 0 : p.quantity}">
                                     0
                                 </span>
                             </td>
@@ -217,7 +204,6 @@
                 </div>
             </div>
 
-            <!-- SẢN PHẨM SẮP HẾT HẠN -->
             <div class="panel-card">
                 <div class="panel-header">
                     <h5>Sản phẩm sắp hết hạn</h5>
@@ -264,7 +250,6 @@
 
         </section>
 
-        <!-- TOP SẢN PHẨM BÁN CHẠY -->
         <section class="panel-card">
             <div class="panel-header">
                 <h5>Top sản phẩm bán chạy</h5>
@@ -298,12 +283,13 @@
                         </td>
 
                         <td>
-                            <span class="badge bg-success" th:text="${item[1]}">
+                            <span class="badge bg-success"
+                                  th:text="${item[1] == null ? 0 : item[1]}">
                                 0
                             </span>
                         </td>
 
-                        <td th:text="${#numbers.formatDecimal(item[2] != null ? item[2] : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                        <td th:text="${#numbers.formatDecimal(item[2] == null ? 0 : item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">
                             0 đ
                         </td>
                     </tr>
@@ -315,31 +301,6 @@
 
     </main>
 </div>
-<script>
-    (function () {
-        const params = new URLSearchParams(window.location.search);
-        const isFreshLogin = params.has("freshLogin");
 
-        /*
-         * Sau login, nếu trình duyệt vẫn render dashboard cũ = 0,
-         * script này sẽ reload đúng 1 lần.
-         */
-        if (isFreshLogin && sessionStorage.getItem("dashboardFreshReloaded") !== "1") {
-            sessionStorage.setItem("dashboardFreshReloaded", "1");
-
-            setTimeout(function () {
-                window.location.replace("/dashboard?ts=" + Date.now());
-            }, 150);
-        }
-
-        /*
-         * Khi đã vào dashboard bình thường thì reset cờ,
-         * để lần login sau vẫn được refresh 1 lần.
-         */
-        if (!isFreshLogin) {
-            sessionStorage.removeItem("dashboardFreshReloaded");
-        }
-    })();
-</script>
 </body>
 </html>

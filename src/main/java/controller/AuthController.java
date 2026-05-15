@@ -26,7 +26,7 @@ public class AuthController {
         HttpSession session = request.getSession(false);
 
         if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return "redirect:/dashboard-warmup?ts=" + System.currentTimeMillis();
+            return "redirect:/dashboard";
         }
 
         return "auth/login";
@@ -41,12 +41,7 @@ public class AuthController {
 
         try {
             authService.login(username, password);
-
-            /*
-             * Không redirect thẳng vào Dashboard nữa.
-             * Đi qua warmup để tránh lỗi Dashboard request đầu tiên bị 0.
-             */
-            return "redirect:/dashboard-warmup?login=1&ts=" + System.currentTimeMillis();
+            return "redirect:/dashboard";
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             return "auth/login";
@@ -79,7 +74,7 @@ public class AuthController {
         authService.logout(request, response);
         disableCache(response);
 
-        return "redirect:/login?logout=" + System.currentTimeMillis();
+        return "redirect:/login";
     }
 
     private void disableCache(HttpServletResponse response) {

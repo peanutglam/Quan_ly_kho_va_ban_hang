@@ -10,19 +10,22 @@ import service.AuthService;
 @Component
 public class Authinterceptor implements HandlerInterceptor {
 
-    private static final String[] PUBLIC_PATHS = {
-            "/login", "/register", "/css/", "/js/", "/images/", "/webjars/", "/favicon", "/error"
+    /** Các path công khai - không cần đăng nhập */
+    private static final String[] PUBLIC_PREFIXES = {
+            "/login", "/register",
+            "/css/", "/js/", "/images/", "/webjars/", "/favicon", "/error",
+            // Trang bán hàng công khai
+            "/shop", "/cart", "/checkout", "/order-success"
     };
 
     @Override
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
                              Object handler) throws Exception {
-
         String uri = request.getRequestURI();
 
-        for (String pub : PUBLIC_PATHS) {
-            if (uri.startsWith(pub) || uri.equals(pub)) {
+        for (String prefix : PUBLIC_PREFIXES) {
+            if (uri.equals(prefix) || uri.startsWith(prefix + "/") || uri.startsWith(prefix + "?")) {
                 return true;
             }
         }
@@ -35,7 +38,6 @@ public class Authinterceptor implements HandlerInterceptor {
 
         response.setHeader("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
         response.setHeader("Pragma", "no-cache");
-        response.setHeader("Expires", "0");
         return true;
     }
 }

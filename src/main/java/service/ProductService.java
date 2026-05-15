@@ -2,20 +2,18 @@ package service;
 
 import entity.AppUser;
 import entity.Product;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.ProductRepository;
 import repository.StockImportRepository;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,72 +36,16 @@ public class ProductService {
         this.authService = authService;
     }
 
-    /*
-     * Đề tài hiện tại: 1 ứng dụng = 1 cửa hàng = 1 Owner chính.
-     * Vì vậy phần đọc/hiển thị sản phẩm không phụ thuộc user_id nữa.
-     * Điều này tránh lỗi logout/login lại web query sai user_id làm tưởng như mất dữ liệu.
+    /**
+     * Lấy danh sách sản phẩm - KHÔNG chạy sync để tránh performance issue.
      */
-    @Transactional(readOnly = true)
     public List<Product> getAllProducts(String keyword, AppUser user) {
-        List<Product> products = activeProducts();
-
-        if (StringUtils.hasText(keyword)) {
-            String kw = keyword.trim().toLowerCase();
-
-            products = products.stream()
-                    .filter(p ->
-                            containsIgnoreCase(p.getCode(), kw)
-                                    || containsIgnoreCase(p.getName(), kw)
-                                    || containsIgnoreCase(p.getBrand(), kw)
-                                    || containsIgnoreCase(p.getCategory(), kw)
-                    )
-                    .toList();
+        user = workspaceOwner(user);
+        if (!StringUtils.hasText(keyword)) {
+            return productRepository.findByUserAndActiveTrueOrderByIdDesc(user);
         }
-
-        return products;
+        return productRepository.searchByUserAndKeyword(user, keyword.trim());
     }
-
-    @Transactional(readOnly = true)
-    public List<Product> filterProducts(AppUser user,
-                                        String keyword,
-                                        String stockStatus,
-                                        String expiryStatus) {
-        List<Product> products = getAllProducts(keyword, user);
-
-        if ("OUT_OF_STOCK".equals(stockStatus)) {
-            products = products.stream()
-                    .filter(p -> p.getQuantity() == 0)
-                    .toList();
-        } else if ("LOW_STOCK".equals(stockStatus)) {
-            products = products.stream()
-                    .filter(p -> p.getQuantity() > 0 && p.getQuantity() <= 5)
-                    .toList();
-        } else if ("AVAILABLE".equals(stockStatus)) {
-            products = products.stream()
-                    .filter(p -> p.getQuantity() > 5)
-                    .toList();
-        }
-
-        LocalDate today = LocalDate.now();
-
-        if ("EXPIRED".equals(expiryStatus)) {
-            products = products.stream()
-                    .filter(p -> p.getExpiryDate() != null && p.getExpiryDate().isBefore(today))
-                    .toList();
-        } else if ("EXPIRING_SOON".equals(expiryStatus)) {
-            products = products.stream()
-                    .filter(p ->
-                            p.getExpiryDate() != null
-                                    && !p.getExpiryDate().isBefore(today)
-                                    && !p.getExpiryDate().isAfter(today.plusDays(30))
-                    )
-                    .toList();
-        }
-
-        return products;
-    }
-
-    @Transactional(readOnly = true)
     public Page<Product> filterProductsPage(AppUser user,
                                             String keyword,
                                             String stockStatus,
@@ -113,347 +55,228 @@ public class ProductService {
         int safePage = Math.max(page, 0);
         int safeSize = size <= 0 ? 30 : Math.min(size, 30);
 
-        List<Product> filtered = filterProducts(user, keyword, stockStatus, expiryStatus);
+        List<Product> filteredProducts = filterProducts(user, keyword, stockStatus, expiryStatus);
+
+        /*
+         * Đẩy sản phẩm hết hàng xuống cuối.
+         * Sản phẩm còn hàng lên trước.
+         */
+        filteredProducts = filteredProducts.stream()
+                .sorted(
+                        java.util.Comparator
+                                .comparing((Product p) -> p.getQuantity() == null || p.getQuantity() <= 0)
+                                .thenComparing(
+                                        p -> p.getId() == null ? 0L : p.getId(),
+                                        java.util.Comparator.reverseOrder()
+                                )
+                )
+                .toList();
 
         int start = safePage * safeSize;
-
-        if (start >= filtered.size()) {
-            Pageable emptyPageable = PageRequest.of(safePage, safeSize);
-            return new PageImpl<>(List.of(), emptyPageable, filtered.size());
-        }
-
-        int end = Math.min(start + safeSize, filtered.size());
-
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        return new PageImpl<>(filtered.subList(start, end), pageable, filtered.size());
+        if (start >= filteredProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, filteredProducts.size());
+        }
+
+        int end = Math.min(start + safeSize, filteredProducts.size());
+
+        return new PageImpl<>(
+                filteredProducts.subList(start, end),
+                pageable,
+                filteredProducts.size()
+        );
+    }
+    public List<Product> filterProducts(AppUser user, String keyword, String stockStatus, String expiryStatus) {
+        user = workspaceOwner(user);
+        List<Product> products = getAllProducts(keyword, user);
+
+        if ("OUT_OF_STOCK".equals(stockStatus)) {
+            products = products.stream().filter(p -> p.getQuantity() == 0).toList();
+        } else if ("LOW_STOCK".equals(stockStatus)) {
+            products = products.stream().filter(p -> p.getQuantity() > 0 && p.getQuantity() <= 5).toList();
+        } else if ("AVAILABLE".equals(stockStatus)) {
+            products = products.stream().filter(p -> p.getQuantity() > 5).toList();
+        }
+
+        LocalDate today = LocalDate.now();
+        if ("EXPIRED".equals(expiryStatus)) {
+            products = products.stream()
+                    .filter(p -> p.getExpiryDate() != null && p.getExpiryDate().isBefore(today)).toList();
+        } else if ("EXPIRING_SOON".equals(expiryStatus)) {
+            products = products.stream()
+                    .filter(p -> p.getExpiryDate() != null
+                            && !p.getExpiryDate().isBefore(today)
+                            && !p.getExpiryDate().isAfter(today.plusDays(30))).toList();
+        }
+        return products;
     }
 
-    @Transactional(readOnly = true)
     public Product getById(Long id, AppUser user) {
-        return productRepository.findById(id)
-                .filter(this::isActive)
+        user = workspaceOwner(user);
+        return productRepository.findByIdAndUserAndActiveTrue(id, user)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm"));
     }
 
     @Transactional
     public Product create(Product product, AppUser user) {
-        AppUser owner = workspaceOwner(user);
-
+        user = workspaceOwner(user);
         validateProduct(product);
-
-        if (activeProductCodeExists(product.getCode(), null)) {
-            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong hệ thống");
+        if (productRepository.existsByCodeAndUserAndActiveTrue(product.getCode(), user)) {
+            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại");
         }
-
-        product.setUser(owner);
+        product.setUser(user);
         product.setActive(true);
-
         if (product.getTotalQuantity() == 0 && product.getQuantity() > 0) {
-            product.setTotalQuantity(product.getQuantity());
+            product.setTotalQuantity(product.getQuantity() + product.getSoldQuantity());
         }
-
-        product.recalculateInventoryFields();
-
         return productRepository.save(product);
     }
 
     @Transactional
-    public Product update(Long id, Product updatedProduct, AppUser user) {
-        AppUser owner = workspaceOwner(user);
-
-        validateProduct(updatedProduct);
-
-        Product existing = getById(id, owner);
-
-        if (activeProductCodeExists(updatedProduct.getCode(), id)) {
-            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong hệ thống");
+    public Product update(Long id, Product updated, AppUser user) {
+        user = workspaceOwner(user);
+        validateProduct(updated);
+        Product existing = getById(id, user);
+        if (productRepository.existsByCodeAndUserAndActiveTrueAndIdNot(updated.getCode(), user, id)) {
+            throw new IllegalArgumentException("Mã sản phẩm đã tồn tại");
         }
-
-        existing.setUser(owner);
-        existing.setCode(updatedProduct.getCode());
-        existing.setName(updatedProduct.getName());
-        existing.setCategory(updatedProduct.getCategory());
-        existing.setBrand(updatedProduct.getBrand());
-        existing.setTotalQuantity(updatedProduct.getTotalQuantity());
-        existing.setImportPrice(updatedProduct.getImportPrice());
-        existing.setSalePrice(updatedProduct.getSalePrice());
-        existing.setExpiryDate(updatedProduct.getExpiryDate());
-        existing.setSupplier(updatedProduct.getSupplier());
-        existing.setDescription(updatedProduct.getDescription());
-        existing.setActive(true);
-
-        existing.recalculateInventoryFields();
-
+        existing.setCode(updated.getCode());
+        existing.setName(updated.getName());
+        existing.setCategory(updated.getCategory());
+        existing.setBrand(updated.getBrand());
+        existing.setImportPrice(updated.getImportPrice());
+        existing.setSalePrice(updated.getSalePrice());
+        existing.setExpiryDate(updated.getExpiryDate());
+        existing.setSupplier(updated.getSupplier());
+        existing.setDescription(updated.getDescription());
+        int newTotal = updated.getTotalQuantity();
+        if (newTotal > 0 && newTotal >= existing.getSoldQuantity()) {
+            existing.setTotalQuantity(newTotal);
+        }
         return productRepository.save(existing);
     }
 
     @Transactional
     public String delete(Long id, AppUser user) {
+        user = workspaceOwner(user);
         Product product = getById(id, user);
-
         product.setActive(false);
         productRepository.save(product);
-
-        return "Đã ẩn sản phẩm. Đơn hàng và phiếu nhập cũ vẫn được giữ an toàn.";
+        return "Đã ẩn sản phẩm. Lịch sử đơn hàng và phiếu nhập vẫn được giữ.";
     }
 
     @Transactional
     public void deleteAll(AppUser user) {
-        List<Product> all = activeProducts();
-
-        all.forEach(product -> product.setActive(false));
-
+        user = workspaceOwner(user);
+        List<Product> all = productRepository.findByUserAndActiveTrue(user);
+        all.forEach(p -> p.setActive(false));
         productRepository.saveAll(all);
     }
 
     @Transactional
-    public void increaseStock(Product product,
-                              int amount,
-                              BigDecimal importPrice,
-                              LocalDate expiryDate) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
-        }
-
+    public void increaseStock(Product product, int amount, BigDecimal importPrice, LocalDate expiryDate) {
+        if (amount <= 0) throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
         product.increaseStock(amount);
-
-        if (importPrice != null) {
-            product.setImportPrice(importPrice);
-        }
-
-        if (expiryDate != null) {
-            product.setExpiryDate(expiryDate);
-        }
-
+        if (importPrice != null && importPrice.signum() > 0) product.setImportPrice(importPrice);
+        if (expiryDate != null) product.setExpiryDate(expiryDate);
         productRepository.save(product);
     }
 
     @Transactional
     public void decreaseStockForSale(Product product, int amount) {
-        if (product == null) {
-            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
-        }
-
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Số lượng bán phải lớn hơn 0");
-        }
-
+        if (amount <= 0) throw new IllegalArgumentException("Số lượng bán phải lớn hơn 0");
         if (product.getQuantity() < amount) {
             throw new IllegalArgumentException(
-                    "Sản phẩm '" + product.getName() + "' không đủ tồn kho, hiện còn " + product.getQuantity()
-            );
+                    "Sản phẩm '" + product.getName() + "' không đủ tồn kho, hiện còn " + product.getQuantity());
         }
-
         product.registerSale(amount);
-
         productRepository.save(product);
     }
 
     @Transactional
     public void restoreStockFromSale(Product product, int amount) {
-        if (product == null || amount <= 0) {
-            return;
-        }
-
+        if (product == null || amount <= 0) return;
         product.restoreSale(amount);
-
         productRepository.save(product);
     }
 
-    /*
-     * Không gọi tự động ở Dashboard/List vì dễ gây update hàng loạt.
-     * Chỉ dùng khi cần chủ động đồng bộ thủ công.
-     */
-    @Transactional
-    public void synchronizeProductStatistics(AppUser user) {
-        AppUser owner = workspaceOwner(user);
-
-        List<Product> products = productRepository.findAll();
-
-        if (products.isEmpty()) {
-            return;
-        }
-
-        Map<Long, Long> soldQtyMap = getSoldQtyMap(owner);
-        Map<Long, Long> importedQtyMap = getTotalImportedMap(owner);
-
-        for (Product product : products) {
-            long soldFromOrders = soldQtyMap.getOrDefault(product.getId(), 0L);
-            long imported = importedQtyMap.getOrDefault(product.getId(), 0L);
-
-            int currentSold = product.getSoldQuantity() == null ? 0 : product.getSoldQuantity();
-            int currentTotal = product.getTotalQuantity() == null ? 0 : product.getTotalQuantity();
-            int currentStock = product.getQuantity() == null ? 0 : product.getQuantity();
-
-            int finalSold = Math.max(currentSold, safeLongToInt(soldFromOrders));
-            int finalTotal = Math.max(currentTotal, currentStock + finalSold);
-
-            if (imported > 0) {
-                finalTotal = Math.max(finalTotal, safeLongToInt(imported));
-            }
-
-            if (finalSold > finalTotal) {
-                finalTotal = finalSold;
-            }
-
-            product.setUser(owner);
-            product.setSoldQuantity(finalSold);
-            product.setTotalQuantity(finalTotal);
-            product.recalculateInventoryFields();
-        }
-
-        productRepository.saveAll(products);
-    }
-
-    @Transactional(readOnly = true)
     public long countProducts(AppUser user) {
-        return activeProducts().size();
+        return productRepository.countByUserAndActiveTrue(workspaceOwner(user));
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getExpiringProducts(AppUser user) {
+        user = workspaceOwner(user);
         LocalDate today = LocalDate.now();
-
-        return activeProducts().stream()
-                .filter(p -> p.getExpiryDate() != null)
-                .filter(p -> !p.getExpiryDate().isBefore(today))
-                .filter(p -> !p.getExpiryDate().isAfter(today.plusDays(30)))
-                .toList();
+        return productRepository.findByUserAndActiveTrueAndExpiryDateBetween(user, today, today.plusDays(30));
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getLowStockProducts(AppUser user) {
-        return activeProducts().stream()
-                .filter(p -> p.getQuantity() > 0 && p.getQuantity() <= 5)
-                .toList();
+        user = workspaceOwner(user);
+        return productRepository.findByUserAndActiveTrueAndQuantityLessThanEqual(user, 5)
+                .stream().filter(p -> p.getQuantity() > 0).toList();
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getTopLowStock(AppUser user) {
-        return activeProducts().stream()
-                .sorted(Comparator.comparing(Product::getQuantity))
-                .limit(5)
-                .toList();
+        user = workspaceOwner(user);
+        return productRepository.findTop5ByUserAndActiveTrueOrderByQuantityAsc(user);
     }
 
-    @Transactional(readOnly = true)
     public Map<Long, Long> getSoldQtyMap(AppUser user) {
-        AppUser owner = workspaceOwner(user);
-
+        user = workspaceOwner(user);
         Map<Long, Long> map = new HashMap<>();
-
-        List<Object[]> rows = orderItemRepository.findSoldQtyPerProduct(owner);
-
-        for (Object[] row : rows) {
-            Long productId = (Long) row[0];
-            Long qty = row[1] == null ? 0L : ((Number) row[1]).longValue();
-
-            map.put(productId, qty);
+        for (Object[] row : orderItemRepository.findSoldQtyPerProduct(user)) {
+            map.put((Long) row[0], row[1] == null ? 0L : ((Number) row[1]).longValue());
         }
-
         return map;
     }
 
-    @Transactional(readOnly = true)
     public Map<Long, Long> getTotalImportedMap(AppUser user) {
-        AppUser owner = workspaceOwner(user);
-
+        user = workspaceOwner(user);
         Map<Long, Long> map = new HashMap<>();
-
-        List<Object[]> rows = stockImportRepository.findTotalImportedPerProduct(owner);
-
-        for (Object[] row : rows) {
-            Long productId = (Long) row[0];
-            Long qty = row[1] == null ? 0L : ((Number) row[1]).longValue();
-
-            map.put(productId, qty);
+        for (Object[] row : stockImportRepository.findTotalImportedPerProduct(user)) {
+            map.put((Long) row[0], row[1] == null ? 0L : ((Number) row[1]).longValue());
         }
-
         return map;
     }
 
-    private List<Product> activeProducts() {
-        return productRepository.findAll()
-                .stream()
-                .filter(this::isActive)
-                .sorted(
-                        Comparator
-                                // Còn hàng lên trước, hết hàng xuống cuối
-                                .comparing((Product p) -> p.getQuantity() == null || p.getQuantity() <= 0)
-
-                                // Trong nhóm còn hàng, tồn kho nhiều hơn lên trước
-                                .thenComparing(
-                                        p -> p.getQuantity() == null ? 0 : p.getQuantity(),
-                                        Comparator.reverseOrder()
-                                )
-
-                                // Nếu tồn kho bằng nhau thì sản phẩm mới hơn lên trước
-                                .thenComparing(
-                                        p -> p.getId() == null ? 0L : p.getId(),
-                                        Comparator.reverseOrder()
-                                )
-                )
-                .toList();
-    }
-
-    private boolean isActive(Product product) {
-        return product != null && Boolean.TRUE.equals(product.getActive());
-    }
-
-    private boolean activeProductCodeExists(String code, Long exceptId) {
-        if (!StringUtils.hasText(code)) {
-            return false;
+    /** Chỉ gọi khi cần thiết (từ trang admin), không gọi ngầm. */
+    @Transactional
+    public int synchronizeProductStatistics(AppUser user) {
+        user = workspaceOwner(user);
+        List<Product> products = productRepository.findByUser(user);
+        if (products.isEmpty()) return 0;
+        Map<Long, Long> soldMap     = getSoldQtyMap(user);
+        Map<Long, Long> importedMap = getTotalImportedMap(user);
+        for (Product p : products) {
+            int finalSold  = (int) Math.min(soldMap.getOrDefault(p.getId(), (long) p.getSoldQuantity()), Integer.MAX_VALUE);
+            int finalTotal = (int) Math.min(importedMap.getOrDefault(p.getId(), (long) p.getTotalQuantity()), Integer.MAX_VALUE);
+            finalTotal = Math.max(finalTotal, p.getQuantity() + finalSold);
+            p.setSoldQuantity(finalSold);
+            p.setTotalQuantity(Math.max(finalTotal, finalSold));
         }
-
-        String normalizedCode = code.trim();
-
-        return productRepository.findAll()
-                .stream()
-                .filter(this::isActive)
-                .filter(p -> p.getCode() != null && p.getCode().trim().equalsIgnoreCase(normalizedCode))
-                .anyMatch(p -> exceptId == null || !exceptId.equals(p.getId()));
+        productRepository.saveAll(products);
+        return products.size();
     }
 
-    private boolean containsIgnoreCase(String value, String keyword) {
-        return value != null && value.toLowerCase().contains(keyword);
+    // Public products for shop (không cần auth)
+    public List<Product> getPublicProducts(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return productRepository.findAllByActiveTrueAndQuantityGreaterThanOrderByIdDesc(0);
+        }
+        return productRepository.searchPublicProducts(keyword.trim());
     }
 
     private AppUser workspaceOwner(AppUser user) {
-        if (user == null) {
-            return authService.getWorkspaceOwner();
-        }
-
+        if (user == null) return authService.getWorkspaceOwner();
         return authService.getWorkspaceOwner(user);
     }
 
-    private void validateProduct(Product product) {
-        if (product == null) {
-            throw new IllegalArgumentException("Dữ liệu sản phẩm không hợp lệ");
-        }
-
-        if (!StringUtils.hasText(product.getCode())) {
-            throw new IllegalArgumentException("Mã sản phẩm không được để trống");
-        }
-
-        if (!StringUtils.hasText(product.getName())) {
-            throw new IllegalArgumentException("Tên sản phẩm không được để trống");
-        }
-
-        if (product.getImportPrice() != null && product.getImportPrice().signum() < 0) {
-            throw new IllegalArgumentException("Giá nhập không hợp lệ");
-        }
-
-        if (product.getSalePrice() != null && product.getSalePrice().signum() < 0) {
-            throw new IllegalArgumentException("Giá bán không hợp lệ");
-        }
-    }
-
-    private int safeLongToInt(long value) {
-        if (value <= 0) {
-            return 0;
-        }
-
-        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+    private void validateProduct(Product p) {
+        if (p == null) throw new IllegalArgumentException("Dữ liệu sản phẩm không hợp lệ");
+        if (!StringUtils.hasText(p.getCode())) throw new IllegalArgumentException("Mã sản phẩm không được để trống");
+        if (!StringUtils.hasText(p.getName())) throw new IllegalArgumentException("Tên sản phẩm không được để trống");
+        if (p.getImportPrice() != null && p.getImportPrice().signum() < 0) throw new IllegalArgumentException("Giá nhập không hợp lệ");
+        if (p.getSalePrice() != null && p.getSalePrice().signum() < 0) throw new IllegalArgumentException("Giá bán không hợp lệ");
     }
 }
