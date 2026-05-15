@@ -167,7 +167,9 @@ public class AuthService {
         getCurrentUser();
         return getCanonicalOwner();
     }
-
+    public AppUser getSystemOwner() {
+        return getCanonicalOwner();
+    }
     public AppUser getWorkspaceOwner(AppUser user) {
         if (user == null) {
             throw new IllegalArgumentException("Bạn cần đăng nhập");

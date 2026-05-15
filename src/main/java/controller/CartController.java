@@ -45,7 +45,7 @@ public class CartController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
-        model.addAttribute("shopProfile", shopProfileService.getCurrentProfile());
+        model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
         return "cart/index";
     }
 
@@ -129,7 +129,7 @@ public class CartController {
 
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
-        model.addAttribute("shopProfile", shopProfileService.getCurrentProfile());
+        model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
         return "cart/checkout";
     }
     @PostMapping("/checkout")
@@ -164,7 +164,7 @@ public class CartController {
     @GetMapping("/order-success")
     public String orderSuccess(@RequestParam String code, Model model) {
         model.addAttribute("orderCode", code);
-        model.addAttribute("shopProfile", shopProfileService.getCurrentProfile());
+        model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
         return "cart/success";
     }
 
