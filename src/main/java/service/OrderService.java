@@ -1,236 +1,185 @@
 package service;
 
-import entity.AppUser;
-import entity.Order;
-import entity.OrderItem;
-import entity.Product;
+import entity.*;
+import dto.DailyReportDTO;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.OrderRepository;
+import repository.StockImportRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
-    public static final String STATUS_PENDING = "CHỜ_XÁC_NHẬN";
-    public static final String STATUS_SHIPPING = "ĐANG_GIAO";
+    public static final String STATUS_PENDING   = "CHỜ_XÁC_NHẬN";
+    public static final String STATUS_SHIPPING  = "ĐANG_GIAO";
     public static final String STATUS_COMPLETED = "HOÀN_THÀNH";
     public static final String STATUS_DELIVERED = "ĐÃ_GIAO";
     public static final String STATUS_CANCELLED = "ĐÃ_HỦY";
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final StockImportRepository stockImportRepository;
     private final ProductService productService;
     private final AuthService authService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
+                        StockImportRepository stockImportRepository,
                         ProductService productService,
                         AuthService authService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.stockImportRepository = stockImportRepository;
         this.productService = productService;
         this.authService = authService;
     }
 
-    /*
-     * Đề tài hiện tại: 1 ứng dụng = 1 cửa hàng.
-     * Vì vậy phần đọc/hiển thị đơn hàng không phụ thuộc user_id nữa.
-     * Điều này tránh lỗi vừa login dashboard hiện 0 nhưng DB vẫn có dữ liệu.
-     */
-    @Transactional(readOnly = true)
+    private AppUser owner() { return authService.getWorkspaceOwner(); }
+
+    public Page<Order> filterOrdersPaged(String keyword, String status, int page, int size) {
+        return orderRepository.filterOrdersPaged(owner(),
+                keyword == null ? "" : keyword.trim(),
+                status == null ? "" : status.trim(),
+                PageRequest.of(page, size));
+    }
+
     public List<Order> getAllOrders() {
-        return allOrdersSortedDesc();
+        return orderRepository.findByUserOrderByIdDesc(owner());
     }
 
-    @Transactional(readOnly = true)
-    public Page<Order> filterOrdersPaged(String keyword,
-                                         String status,
-                                         int page,
-                                         int size) {
-        int safePage = Math.max(page, 0);
-        int safeSize = size <= 0 ? 30 : Math.min(size, 30);
-
-        String kw = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase() : "";
-        String st = StringUtils.hasText(status) ? status.trim() : "";
-
-        List<Order> filtered = allOrdersSortedDesc();
-
-        if (StringUtils.hasText(kw)) {
-            filtered = filtered.stream()
-                    .filter(o ->
-                            containsIgnoreCase(o.getOrderCode(), kw)
-                                    || containsIgnoreCase(o.getCustomerName(), kw)
-                                    || containsIgnoreCase(o.getCustomerPhone(), kw)
-                                    || containsIgnoreCase(o.getCustomerAddress(), kw)
-                    )
-                    .toList();
-        }
-
-        if (StringUtils.hasText(st)) {
-            filtered = filtered.stream()
-                    .filter(o -> st.equals(o.getStatus()))
-                    .toList();
-        }
-
-        int start = safePage * safeSize;
-        Pageable pageable = PageRequest.of(safePage, safeSize);
-
-        if (start >= filtered.size()) {
-            return new PageImpl<>(List.of(), pageable, filtered.size());
-        }
-
-        int end = Math.min(start + safeSize, filtered.size());
-
-        return new PageImpl<>(filtered.subList(start, end), pageable, filtered.size());
-    }
-
-    @Transactional(readOnly = true)
     public Order getById(Long id) {
-        return orderRepository.findById(id)
+        return orderRepository.findByIdAndUser(id, owner())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng"));
     }
 
-    @Transactional(readOnly = true)
-    public long countOrders() {
-        return orderRepository.count();
-    }
+    public long countOrders() { return orderRepository.countByUser(owner()); }
 
-    @Transactional(readOnly = true)
-    public long countByStatus(String status) {
-        if (!StringUtils.hasText(status)) {
-            return 0;
-        }
+    public long countByStatus(String status) { return orderRepository.countByUserAndStatus(owner(), status); }
 
-        return allOrdersSortedDesc().stream()
-                .filter(o -> status.equals(o.getStatus()))
-                .count();
-    }
-
-    @Transactional(readOnly = true)
     public BigDecimal totalRevenue() {
-        return allOrdersSortedDesc().stream()
-                .filter(o -> STATUS_COMPLETED.equals(o.getStatus()) || STATUS_DELIVERED.equals(o.getStatus()))
-                .map(Order::getTotalAmount)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal r = orderRepository.sumRevenueByUser(owner());
+        return r == null ? BigDecimal.ZERO : r;
     }
 
     @Transactional
-    public void createOrder(String customerName,
-                            String customerPhone,
-                            String customerAddress,
-                            List<Long> productIds,
-                            List<Integer> quantities) {
-        AppUser owner = authService.getWorkspaceOwner();
-
-        if (!StringUtils.hasText(customerName)) {
-            throw new IllegalArgumentException("Vui lòng nhập tên khách hàng");
-        }
-
-        if (!StringUtils.hasText(customerPhone)) {
-            throw new IllegalArgumentException("Vui lòng nhập số điện thoại");
-        }
-
-        if (productIds == null || productIds.isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng chọn ít nhất một sản phẩm");
-        }
-
-        Map<Long, Integer> requestedItems = new LinkedHashMap<>();
-
-        for (int i = 0; i < productIds.size(); i++) {
-            Long productId = productIds.get(i);
-            Integer quantity = quantities != null && quantities.size() > i ? quantities.get(i) : 0;
-
-            if (productId == null || quantity == null || quantity <= 0) {
-                continue;
-            }
-
-            requestedItems.merge(productId, quantity, Integer::sum);
-        }
-
-        if (requestedItems.isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng nhập số lượng bán hợp lệ");
-        }
-
-        List<OrderLine> orderLines = new ArrayList<>();
-
-        for (Map.Entry<Long, Integer> entry : requestedItems.entrySet()) {
-            Product product = productService.getById(entry.getKey(), owner);
-            int quantity = entry.getValue();
-
-            if (product.getQuantity() < quantity) {
-                throw new IllegalArgumentException(
-                        "Sản phẩm '" + product.getName() + "' không đủ tồn kho, hiện còn " + product.getQuantity()
-                );
-            }
-
-            orderLines.add(new OrderLine(product, quantity));
-        }
+    public void createOrder(String customerName, String customerPhone, String customerAddress,
+                            List<Long> productIds, List<Integer> quantities) {
+        AppUser ownerUser = owner();
+        if (!StringUtils.hasText(customerName)) throw new IllegalArgumentException("Vui lòng nhập tên khách hàng");
+        if (!StringUtils.hasText(customerPhone)) throw new IllegalArgumentException("Vui lòng nhập số điện thoại");
+        if (productIds == null || productIds.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn sản phẩm");
 
         Order order = new Order();
         order.setOrderCode("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        order.setCustomerName(customerName.trim());
-        order.setCustomerPhone(customerPhone.trim());
-        order.setCustomerAddress(customerAddress == null ? "" : customerAddress.trim());
+        order.setCustomerName(customerName);
+        order.setCustomerPhone(customerPhone);
+        order.setCustomerAddress(customerAddress);
         order.setStatus(STATUS_PENDING);
-        order.setUser(owner);
+        order.setUser(ownerUser);
+        order = orderRepository.save(order);
 
         BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < productIds.size(); i++) {
+            Long pid = productIds.get(i);
+            int qty = i < quantities.size() ? quantities.get(i) : 1;
+            if (pid == null || qty <= 0) continue;
 
-        for (OrderLine line : orderLines) {
-            Product product = line.product();
-            int quantity = line.quantity();
-
-            BigDecimal unitPrice = product.getSalePrice() == null ? BigDecimal.ZERO : product.getSalePrice();
-            BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            Product product = productService.getById(pid, ownerUser);
+            BigDecimal unitPrice = product.getSalePrice();
+            BigDecimal costPrice = product.getImportPrice();
+            BigDecimal subtotal  = unitPrice.multiply(BigDecimal.valueOf(qty));
 
             OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProduct(product);
-            item.setQuantity(quantity);
+            item.setQuantity(qty);
+            item.setOriginalPrice(unitPrice);
             item.setUnitPrice(unitPrice);
-            item.setSubtotal(subtotal);
-
+            item.setCostPrice(costPrice);
+            item.recalculate();
             order.getItems().add(item);
-
             total = total.add(subtotal);
 
-            productService.decreaseStockForSale(product, quantity);
+            productService.decreaseStockForSale(product, qty);
         }
 
         order.setTotalAmount(total);
         order.setTotalBill(total);
-        order.recalculateMoneyFields();
-
         orderRepository.save(order);
+    }
+
+    /**
+     * Tạo đơn hàng từ trang bán hàng công khai (không cần đăng nhập).
+     * Owner của đơn hàng là owner duy nhất trong hệ thống.
+     */
+    @Transactional
+    public Order createPublicOrder(String customerName, String customerPhone,
+                                   String customerAddress, String note,
+                                   Map<Long, Integer> cartItems) {
+        AppUser ownerUser = owner();
+        if (cartItems == null || cartItems.isEmpty()) throw new IllegalArgumentException("Giỏ hàng trống");
+
+        Order order = new Order();
+        order.setOrderCode("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        order.setCustomerName(customerName);
+        order.setCustomerPhone(customerPhone);
+        order.setCustomerAddress(customerAddress);
+        order.setStatus(STATUS_PENDING);
+        order.setUser(ownerUser);
+        order = orderRepository.save(order);
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map.Entry<Long, Integer> entry : cartItems.entrySet()) {
+            Long pid = entry.getKey();
+            int qty = entry.getValue();
+            if (qty <= 0) continue;
+
+            Product product = productService.getById(pid, ownerUser);
+            if (product.getQuantity() < qty)
+                throw new IllegalArgumentException("Sản phẩm '" + product.getName() + "' chỉ còn " + product.getQuantity());
+
+            BigDecimal unitPrice = product.getSalePrice();
+            BigDecimal costPrice = product.getImportPrice();
+
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProduct(product);
+            item.setQuantity(qty);
+            item.setOriginalPrice(unitPrice);
+            item.setUnitPrice(unitPrice);
+            item.setCostPrice(costPrice);
+            item.recalculate();
+            order.getItems().add(item);
+            total = total.add(item.getSubtotal());
+
+            productService.decreaseStockForSale(product, qty);
+        }
+
+        order.setTotalAmount(total);
+        order.setTotalBill(total);
+        orderRepository.save(order);
+        return order;
     }
 
     @Transactional
     public void updateStatus(Long orderId, String newStatus) {
-        if (!StringUtils.hasText(newStatus)) {
-            throw new IllegalArgumentException("Trạng thái đơn hàng không hợp lệ");
-        }
-
         Order order = getById(orderId);
-
         String oldStatus = order.getStatus();
-
         if (STATUS_CANCELLED.equals(newStatus) && !STATUS_CANCELLED.equals(oldStatus)) {
             restoreOrderStock(order);
         } else if (STATUS_CANCELLED.equals(oldStatus) && !STATUS_CANCELLED.equals(newStatus)) {
             decreaseOrderStock(order);
         }
-
         order.setStatus(newStatus);
         orderRepository.save(order);
     }
@@ -238,199 +187,122 @@ public class OrderService {
     @Transactional
     public void deleteOrder(Long id) {
         Order order = getById(id);
-
-        if (!STATUS_CANCELLED.equals(order.getStatus())) {
-            restoreOrderStock(order);
-        }
-
+        if (!STATUS_CANCELLED.equals(order.getStatus())) restoreOrderStock(order);
         orderRepository.delete(order);
     }
 
     @Transactional
     public void deleteAll() {
-        List<Order> orders = allOrdersSortedDesc();
-
-        for (Order order : orders) {
-            if (!STATUS_CANCELLED.equals(order.getStatus())) {
-                restoreOrderStock(order);
-            }
-
-            orderRepository.delete(order);
+        List<Order> orders = orderRepository.findByUserOrderByIdDesc(owner());
+        for (Order o : orders) {
+            if (!STATUS_CANCELLED.equals(o.getStatus())) restoreOrderStock(o);
+            orderRepository.delete(o);
         }
     }
 
-    @Transactional(readOnly = true)
     public List<Object[]> getBestSellingProducts() {
-        Map<Long, BestSellingStat> statMap = new LinkedHashMap<>();
-
-        for (Order order : allOrdersSortedDesc()) {
-            if (STATUS_CANCELLED.equals(order.getStatus())) {
-                continue;
-            }
-
-            if (order.getItems() == null) {
-                continue;
-            }
-
-            for (OrderItem item : order.getItems()) {
-                if (item == null || item.getProduct() == null) {
-                    continue;
-                }
-
-                Product product = item.getProduct();
-                Long productId = product.getId();
-
-                if (productId == null) {
-                    continue;
-                }
-
-                int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
-
-                BigDecimal revenue = BigDecimal.ZERO;
-
-                if (item.getSubtotal() != null && item.getSubtotal().signum() > 0) {
-                    revenue = item.getSubtotal();
-                } else if (item.getDisplaySubtotal() != null) {
-                    revenue = item.getDisplaySubtotal();
-                } else if (order.getTotalAmount() != null) {
-                    revenue = order.getTotalAmount();
-                }
-
-                BestSellingStat stat = statMap.computeIfAbsent(
-                        productId,
-                        id -> new BestSellingStat(product.getName(), 0L, BigDecimal.ZERO)
-                );
-
-                stat.quantity += quantity;
-                stat.revenue = stat.revenue.add(revenue);
-            }
-        }
-
-        return statMap.values()
-                .stream()
-                .sorted(
-                        Comparator.comparingLong(BestSellingStat::quantity).reversed()
-                                .thenComparing(BestSellingStat::revenue, Comparator.reverseOrder())
-                )
-                .map(stat -> new Object[]{stat.productName, stat.quantity, stat.revenue})
-                .collect(Collectors.toList());
+        return orderItemRepository.findBestSellingProducts(owner(), PageRequest.of(0, 10));
     }
 
-    @Transactional(readOnly = true)
     public Map<String, BigDecimal> revenueByMonth() {
         Map<String, BigDecimal> result = new LinkedHashMap<>();
-
-        for (int i = 1; i <= 12; i++) {
-            result.put("Tháng " + i, BigDecimal.ZERO);
-        }
-
-        allOrdersSortedDesc().stream()
+        for (int i = 1; i <= 12; i++) result.put("Tháng " + i, BigDecimal.ZERO);
+        getAllOrders().stream()
                 .filter(o -> STATUS_COMPLETED.equals(o.getStatus()) || STATUS_DELIVERED.equals(o.getStatus()))
                 .filter(o -> o.getCreatedAt() != null)
                 .forEach(o -> {
-                    String key = "Tháng " + o.getCreatedAt().getMonthValue();
-                    BigDecimal total = o.getTotalAmount() == null ? BigDecimal.ZERO : o.getTotalAmount();
-                    result.put(key, result.get(key).add(total));
+                    String k = "Tháng " + o.getCreatedAt().getMonthValue();
+                    BigDecimal t = o.getTotalAmount() == null ? BigDecimal.ZERO : o.getTotalAmount();
+                    result.put(k, result.get(k).add(t));
                 });
-
         return result;
     }
 
-    @Transactional(readOnly = true)
     public Map<String, Long> orderStatusStatistics() {
-        Map<String, Long> result = new LinkedHashMap<>();
-
-        result.put("Chờ xác nhận", countByStatus(STATUS_PENDING));
-        result.put("Đang giao", countByStatus(STATUS_SHIPPING));
-        result.put("Hoàn thành", countByStatus(STATUS_COMPLETED));
-        result.put("Đã giao", countByStatus(STATUS_DELIVERED));
-        result.put("Đã hủy", countByStatus(STATUS_CANCELLED));
-
-        return result;
+        Map<String, Long> r = new LinkedHashMap<>();
+        r.put("Chờ xác nhận", countByStatus(STATUS_PENDING));
+        r.put("Đang giao", countByStatus(STATUS_SHIPPING));
+        r.put("Hoàn thành", countByStatus(STATUS_COMPLETED));
+        r.put("Đã giao", countByStatus(STATUS_DELIVERED));
+        r.put("Đã hủy", countByStatus(STATUS_CANCELLED));
+        return r;
     }
 
-    private List<Order> allOrdersSortedDesc() {
-        return orderRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(Order::getId, Comparator.nullsLast(Long::compareTo)).reversed())
-                .toList();
-    }
+    /** Báo cáo cuối ngày - dùng query count/sum thay vì findAll. */
+    public DailyReportDTO getDailyReport(LocalDate date) {
+        AppUser ownerUser = owner();
+        LocalDateTime from = date.atStartOfDay();
+        LocalDateTime to   = date.atTime(LocalTime.MAX);
 
-    private boolean containsIgnoreCase(String value, String keyword) {
-        return value != null && value.toLowerCase().contains(keyword);
+        DailyReportDTO report = new DailyReportDTO();
+        report.setDate(date);
+
+        report.setTotalOrders(   orderRepository.countByUserAndDateRange(ownerUser, from, to));
+        report.setPendingOrders(  orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_PENDING, from, to));
+        report.setShippingOrders( orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_SHIPPING, from, to));
+        report.setCompletedOrders(orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_COMPLETED, from, to) +
+                orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_DELIVERED, from, to));
+        report.setCancelledOrders(orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_CANCELLED, from, to));
+
+        BigDecimal revenue = orderRepository.sumRevenueByUserAndDateRange(ownerUser, from, to);
+        report.setRevenue(revenue == null ? BigDecimal.ZERO : revenue);
+
+        BigDecimal cogsBd = orderItemRepository.sumCostOfGoodsByDateRange(ownerUser, from, to);
+        BigDecimal cogs   = cogsBd == null ? BigDecimal.ZERO : cogsBd;
+        report.setCostOfGoods(cogs);
+        report.setGrossProfit(report.getRevenue().subtract(cogs));
+
+        Long qtySold = orderItemRepository.sumQtySoldByDateRange(ownerUser, from, to);
+        report.setTotalItemsSold(qtySold == null ? 0 : qtySold);
+
+        BigDecimal importTotal = stockImportRepository.sumImportTotalByDateRange(ownerUser, from, to);
+        report.setImportTotal(importTotal == null ? BigDecimal.ZERO : importTotal);
+
+        Long qtyImported = stockImportRepository.sumImportQtyByDateRange(ownerUser, from, to);
+        report.setTotalItemsImported(qtyImported == null ? 0 : qtyImported);
+
+        // Chi tiết đơn hàng trong ngày
+        List<DailyReportDTO.OrderSummary> orderSummaries = new ArrayList<>();
+        List<Order> dayOrders = orderRepository.findByUserAndDateRange(ownerUser, from, to);
+        for (Order o : dayOrders) {
+            orderSummaries.add(new DailyReportDTO.OrderSummary(
+                    o.getOrderCode(), o.getCustomerName(), o.getStatus(),
+                    o.getTotalBill(), o.getShippingFee()
+            ));
+        }
+        report.setOrderSummaries(orderSummaries);
+
+        // Chi tiết sản phẩm bán trong ngày
+        List<DailyReportDTO.ProductSummary> productSummaries = new ArrayList<>();
+        List<Object[]> rows = orderItemRepository.findProductSummaryByDateRange(ownerUser, from, to);
+        for (Object[] row : rows) {
+            String pname = (String) row[0];
+            long qty = row[1] == null ? 0 : ((Number) row[1]).longValue();
+            BigDecimal rev = row[2] == null ? BigDecimal.ZERO : (BigDecimal) row[2];
+            BigDecimal cost = row[3] == null ? BigDecimal.ZERO : (BigDecimal) row[3];
+            BigDecimal pft  = row[4] == null ? BigDecimal.ZERO : (BigDecimal) row[4];
+            productSummaries.add(new DailyReportDTO.ProductSummary(pname, qty, rev, cost, pft));
+        }
+        report.setProductSummaries(productSummaries);
+
+        return report;
     }
 
     private void restoreOrderStock(Order order) {
-        if (order == null || order.getItems() == null) {
-            return;
-        }
-
         for (OrderItem item : order.getItems()) {
-            if (item == null || item.getProduct() == null) {
-                continue;
+            if (item.getProduct() != null && item.getQuantity() != null) {
+                try { productService.restoreStockFromSale(item.getProduct(), item.getQuantity()); }
+                catch (Exception ignored) {}
             }
-
-            int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
-
-            if (quantity <= 0) {
-                continue;
-            }
-
-            productService.restoreStockFromSale(item.getProduct(), quantity);
         }
     }
 
     private void decreaseOrderStock(Order order) {
-        if (order == null || order.getItems() == null) {
-            return;
-        }
-
         for (OrderItem item : order.getItems()) {
-            if (item == null || item.getProduct() == null) {
-                continue;
+            if (item.getProduct() != null && item.getQuantity() != null) {
+                try { productService.decreaseStockForSale(item.getProduct(), item.getQuantity()); }
+                catch (Exception ignored) {}
             }
-
-            int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
-
-            if (quantity <= 0) {
-                continue;
-            }
-
-            Product product = item.getProduct();
-
-            if (product.getQuantity() < quantity) {
-                throw new IllegalArgumentException(
-                        "Không thể khôi phục trạng thái đơn hàng vì sản phẩm '" +
-                                product.getName() +
-                                "' không đủ tồn kho. Hiện còn " +
-                                product.getQuantity()
-                );
-            }
-
-            productService.decreaseStockForSale(product, quantity);
-        }
-    }
-
-    private record OrderLine(Product product, int quantity) {
-    }
-
-    private static class BestSellingStat {
-        private final String productName;
-        private long quantity;
-        private BigDecimal revenue;
-
-        private BestSellingStat(String productName, long quantity, BigDecimal revenue) {
-            this.productName = productName;
-            this.quantity = quantity;
-            this.revenue = revenue;
-        }
-
-        private long quantity() {
-            return quantity;
-        }
-
-        private BigDecimal revenue() {
-            return revenue;
         }
     }
 }

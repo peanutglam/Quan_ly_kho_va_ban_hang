@@ -17,14 +17,11 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .excludePathPatterns(
-                        "/login",
-                        "/register",
-                        "/css/**",
-                        "/js/**",
-                        "/images/**",
-                        "/webjars/**",
-                        "/favicon.ico",
-                        "/error"
+                        "/login", "/register",
+                        "/css/**", "/js/**", "/images/**", "/webjars/**",
+                        "/favicon.ico", "/error",
+                        // Public shop routes
+                        "/shop/**", "/cart/**", "/checkout/**", "/order-success/**"
                 );
     }
 }

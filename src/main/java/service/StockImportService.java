@@ -10,7 +10,6 @@ import repository.StockImportRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -31,57 +30,44 @@ public class StockImportService {
         this.authService = authService;
     }
 
-    /*
-     * 1 ứng dụng = 1 cửa hàng.
-     * Đọc lịch sử nhập toàn hệ thống để dashboard không bị phụ thuộc session user_id.
-     */
     @Transactional(readOnly = true)
     public List<StockImport> getAllImports() {
-        return stockImportRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(StockImport::getId, Comparator.nullsLast(Long::compareTo)).reversed())
-                .toList();
+        AppUser owner = authService.getWorkspaceOwner();
+        return stockImportRepository.findByUserOrderByIdDesc(owner);
+    }
+
+    public long countImports() {
+        AppUser owner = authService.getWorkspaceOwner();
+        return stockImportRepository.countByUser(owner);
     }
 
     @Transactional
-    public void createImport(Long productId,
-                             Long supplierId,
-                             Integer quantity,
-                             BigDecimal importPrice,
-                             LocalDate expiryDate,
-                             String note) {
+    public void createImport(Long productId, Long supplierId, Integer quantity,
+                             BigDecimal importPrice, LocalDate expiryDate, String note) {
         AppUser owner = authService.getWorkspaceOwner();
+        if (productId == null)  throw new IllegalArgumentException("Vui lòng chọn sản phẩm");
+        if (supplierId == null) throw new IllegalArgumentException("Vui lòng chọn nhà cung cấp");
+        if (quantity == null || quantity <= 0) throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
+        if (importPrice == null || importPrice.signum() < 0) throw new IllegalArgumentException("Giá nhập không hợp lệ");
 
-        if (productId == null) {
-            throw new IllegalArgumentException("Vui lòng chọn sản phẩm");
-        }
-
-        if (supplierId == null) {
-            throw new IllegalArgumentException("Vui lòng chọn nhà cung cấp");
-        }
-
-        if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
-        }
-
-        if (importPrice == null || importPrice.signum() < 0) {
-            throw new IllegalArgumentException("Giá nhập không hợp lệ");
-        }
-
-        Product product = productService.getById(productId, owner);
+        Product product   = productService.getById(productId, owner);
         Supplier supplier = supplierService.getSupplierById(supplierId);
 
-        StockImport stockImport = new StockImport();
-        stockImport.setProduct(product);
-        stockImport.setSupplier(supplier);
-        stockImport.setQuantity(quantity);
-        stockImport.setImportPrice(importPrice);
-        stockImport.setExpiryDate(expiryDate);
-        stockImport.setNote(note);
-        stockImport.setUser(owner);
-
-        stockImportRepository.save(stockImport);
+        StockImport si = new StockImport();
+        si.setProduct(product);
+        si.setSupplier(supplier);
+        si.setQuantity(quantity);
+        si.setImportPrice(importPrice);
+        si.setExpiryDate(expiryDate);
+        si.setNote(note);
+        si.setUser(owner);
+        stockImportRepository.save(si);
 
         productService.increaseStock(product, quantity, importPrice, expiryDate);
+    }
+
+    public StockImport getById(Long id) {
+        return stockImportRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu nhập #" + id));
     }
 }
