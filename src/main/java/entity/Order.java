@@ -58,6 +58,9 @@ public class Order {
     @Column(name = "remaining_amount", precision = 15, scale = 2)
     private BigDecimal remainingAmount = BigDecimal.ZERO;
 
+    @Transient
+    private boolean totalBillExplicit;
+
     @Column(nullable = false)
     private String status = "CHỜ_XÁC_NHẬN";
 
@@ -70,6 +73,11 @@ public class Order {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private AppUser user;
+
+    @PostLoad
+    public void postLoad() {
+        totalBillExplicit = totalBill != null && totalBill.signum() > 0;
+    }
 
     @PrePersist
     public void prePersist() {
@@ -95,7 +103,7 @@ public class Order {
         totalBill = money(totalBill);
         customerDeposit = money(customerDeposit);
 
-        if (totalBill.signum() == 0) {
+        if (!totalBillExplicit || totalBill.signum() == 0) {
             totalBill = totalAmount.add(shippingFee);
         }
 
@@ -175,6 +183,7 @@ public class Order {
 
     public void setTotalBill(BigDecimal totalBill) {
         this.totalBill = money(totalBill);
+        this.totalBillExplicit = this.totalBill.signum() > 0;
         recalculateMoneyFields();
     }
 

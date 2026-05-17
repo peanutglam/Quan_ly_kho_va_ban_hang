@@ -125,16 +125,19 @@ public class Product {
     public void increaseStock(int amount) {
         if (amount <= 0) return;
         totalQuantity = nn(totalQuantity) + amount;
+        recalculateInventoryFields();
     }
 
     public void registerSale(int amount) {
         if (amount <= 0) return;
         soldQuantity = nn(soldQuantity) + amount;
+        recalculateInventoryFields();
     }
 
     public void restoreSale(int amount) {
         if (amount <= 0) return;
         soldQuantity = Math.max(nn(soldQuantity) - amount, 0);
+        recalculateInventoryFields();
     }
 
     // ======================================================
