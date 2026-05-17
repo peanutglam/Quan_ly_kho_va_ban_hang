@@ -27,6 +27,7 @@
             <a th:href="@{/imports}">⬇️ Nhập hàng</a>
             <a th:href="@{/reports/daily}">📈 Báo cáo</a>
             <a th:href="@{/shop}" target="_blank">🛍️ Cửa hàng</a>
+
             <a th:if="${isOwner == true}" th:href="@{/shop-profile}">🏪 Cấu hình hóa đơn</a>
             <a th:href="@{/sheet/flex-import}">📄 Import Google Sheet</a>
             <a th:if="${isOwner == true}" th:href="@{/account}">👥 Quản lý tài khoản</a>
@@ -45,6 +46,13 @@
                     <b th:text="${loginUser != null && loginUser.fullName != null ? loginUser.fullName : 'User'}">User</b>
                     <span class="badge bg-primary" th:if="${isOwner == true}">Owner</span>
                     <span class="badge bg-secondary" th:if="${isEmployee == true}">Employee</span>
+
+                    <span class="badge bg-primary" th:if="${isOwner == true}">Owner</span>
+                    <span class="badge bg-secondary" th:if="${isEmployee == true}">Employee</span>
+                </p>
+
+                <p class="text-muted mb-0">
+                    Tổng quan hoạt động kho hàng, đơn hàng và doanh thu của cửa hàng.
                 </p>
                 <p class="text-muted mb-0">Tổng quan hoạt động kho hàng, đơn hàng và doanh thu của cửa hàng mỹ phẩm.</p>
             </div>
@@ -62,6 +70,11 @@
             <span>Doanh thu hoàn thành</span>
             <h2 th:text="${#numbers.formatDecimal(totalRevenue == null ? 0 : totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</h2>
             <p>Doanh thu từ các đơn đã giao hoặc hoàn thành.</p>
+            <div>
+                <span>Doanh thu hoàn thành</span>
+                <h2 th:text="${#numbers.formatDecimal(totalRevenue == null ? 0 : totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</h2>
+                <p>Doanh thu từ các đơn đã giao hoặc hoàn thành.</p>
+            </div>
         </section>
 
         <section class="stat-grid">
@@ -107,6 +120,8 @@
                             <td th:text="${p.name}">Tên sản phẩm</td>
                             <td class="text-center">
                                 <span class="badge bg-warning" th:text="${p.quantity == null ? 0 : p.quantity}">0</span>
+                            <td>
+                                <span class="badge bg-warning text-dark" th:text="${p.quantity == null ? 0 : p.quantity}">0</span>
                             </td>
                         </tr>
                         </tbody>
@@ -136,6 +151,7 @@
                         <tr th:each="p : ${expiringProducts}">
                             <td th:text="${p.name}">Tên sản phẩm</td>
                             <td><span class="badge bg-warning" th:text="${p.expiryDate}">date</span></td>
+                            <td><span class="badge bg-warning text-dark" th:text="${p.expiryDate}">date</span></td>
                         </tr>
                         </tbody>
                     </table>
@@ -167,6 +183,8 @@
                         <td th:text="${item[0]}">Tên sản phẩm</td>
                         <td class="text-center"><span class="badge bg-success" th:text="${item[1] == null ? 0 : item[1]}">0</span></td>
                         <td class="text-end" th:text="${#numbers.formatDecimal(item[2] == null ? 0 : item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                        <td><span class="badge bg-success" th:text="${item[1] == null ? 0 : item[1]}">0</span></td>
+                        <td th:text="${#numbers.formatDecimal(item[2] == null ? 0 : item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
                     </tr>
                     </tbody>
                 </table>
