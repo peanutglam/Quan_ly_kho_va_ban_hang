@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <title>Đặt hàng | SmartInventory Shop</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" th:href="@{/css/style.css}">
     <meta charset="UTF-8">
     <title>Đặt hàng</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,17 +8,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
+
 <body class="shop-page">
 
 <header class="shop-header">
-  <div class="shop-header-inner">
-    <a th:href="@{/shop}" class="shop-brand">
-      <span class="shop-brand-badge">PG</span>
-      <span th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'peanutglam'}">peanutglam</span>
-    </a>
-    <div class="shop-actions">
-      <a th:href="@{/cart}" class="shop-action-btn">← Quay lại giỏ</a>
-      <a th:href="@{/shop}" class="shop-action-btn">Cửa hàng</a>
     <div class="shop-header-inner">
         <a th:href="@{/shop}" class="shop-brand">
             <span class="shop-brand-badge">PG</span>
@@ -37,72 +25,6 @@
 </header>
 
 <main class="checkout-shell">
-  <div class="checkout-title mb-4">
-    <h1 class="mb-2">Thông tin đặt hàng</h1>
-    <p class="text-muted mb-0">Vui lòng nhập thông tin để cửa hàng liên hệ xác nhận đơn.</p>
-  </div>
-
-  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-
-  <div class="row g-4">
-    <div class="col-lg-7">
-      <div class="checkout-card">
-        <h4 class="fw-bold mb-3" style="color: var(--heading);">Thông tin khách hàng</h4>
-        <p class="checkout-helper mb-4">Thông tin chỉ dùng để xác nhận và giao đơn hàng. Các trường có dấu * là bắt buộc.</p>
-
-        <form th:action="@{/checkout}" method="post">
-          <div class="mb-3">
-            <label class="form-label">Họ tên <span class="text-danger">*</span></label>
-            <input type="text" name="customerName" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-            <input type="tel" name="customerPhone" class="form-control" required placeholder="Ví dụ: 0912345678">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Địa chỉ giao hàng</label>
-            <input type="text" name="customerAddress" class="form-control" placeholder="Số nhà, đường, phường/xã, tỉnh/thành">
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label">Ghi chú</label>
-            <textarea name="note" class="form-control" rows="3" placeholder="Ghi chú cho đơn hàng nếu có"></textarea>
-          </div>
-
-          <button type="submit" class="btn btn-primary w-100">Xác nhận đặt hàng</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="col-lg-5">
-      <aside class="summary-box">
-        <h4 class="fw-bold mb-3">Đơn hàng của bạn</h4>
-
-        <div th:if="${cartItems != null and !#lists.isEmpty(cartItems)}">
-          <div th:each="item : ${cartItems}" class="summary-item">
-            <div>
-              <div class="fw-bold" th:text="${item.productName}">Sản phẩm</div>
-              <small>Số lượng: <span th:text="${item.quantity}">1</span></small>
-            </div>
-            <div class="fw-bold text-end" th:text="${#numbers.formatDecimal(item.subtotal == null ? 0 : item.subtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</div>
-          </div>
-        </div>
-
-        <div th:if="${cartItems == null or #lists.isEmpty(cartItems)}" class="mb-3" style="opacity: .9;">
-          Chưa có sản phẩm trong đơn hàng.
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center mt-3 pt-3" style="border-top: 1px solid rgba(255,255,255,.45);">
-          <span class="fw-bold">Tổng tiền</span>
-          <strong class="fs-3" th:text="${#numbers.formatDecimal(cartTotal == null ? 0 : cartTotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</strong>
-        </div>
-
-        <p class="small mt-3 mb-0" style="opacity: 0.9;">Đơn hàng sẽ được tạo với trạng thái chờ xác nhận.</p>
-      </aside>
-    </div>
-  </div>
     <div class="mb-4">
         <h1 class="fw-bold mb-2" style="color: var(--heading); letter-spacing:-0.8px;">Thông tin đặt hàng</h1>
         <p class="text-muted mb-0">Vui lòng nhập thông tin để cửa hàng liên hệ xác nhận đơn.</p>
