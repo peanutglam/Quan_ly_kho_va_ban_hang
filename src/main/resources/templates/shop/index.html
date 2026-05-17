@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
+  <meta charset="UTF-8">
+  <title th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'Cửa hàng'} + ' - Mua sắm'">Cửa hàng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
     <meta charset="UTF-8">
     <title th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'Cửa hàng'} + ' - Mua sắm'">Cửa hàng</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,10 +13,18 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-
 <body class="shop-page">
 
 <header class="shop-header">
+  <div class="shop-header-inner">
+    <a th:href="@{/shop}" class="shop-brand">
+      <span class="shop-brand-badge">PG</span>
+      <span th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'peanutglam'}">peanutglam</span>
+    </a>
+
+    <div class="shop-actions">
+      <a th:href="@{/cart}" class="shop-action-btn">🛒 Giỏ hàng</a>
+      <a th:href="@{/login}" class="shop-action-btn primary">🔐 Quản trị</a>
     <div class="shop-header-inner">
         <a th:href="@{/shop}" class="shop-brand">
             <span class="shop-brand-badge">PG</span>
@@ -26,6 +39,91 @@
 </header>
 
 <section class="shop-hero">
+  <h1 th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'peanutglam'}">peanutglam</h1>
+  <p th:text="${(shopProfile != null and shopProfile.address != null and !#strings.isEmpty(shopProfile.address)) ? shopProfile.address : 'Cửa hàng mỹ phẩm chính hãng, tư vấn tận tâm và quản lý đơn hàng nhanh chóng.'}">
+    Cửa hàng mỹ phẩm chính hãng, tư vấn tận tâm và quản lý đơn hàng nhanh chóng.
+  </p>
+
+  <form th:action="@{/shop}" method="get" class="shop-search-form">
+    <input type="text" name="q" th:value="${keyword}" placeholder="Tìm sản phẩm, thương hiệu hoặc danh mục...">
+    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+  </form>
+</section>
+
+<main class="shop-container">
+  <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+    <span th:text="${successMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${warnMessage}" class="alert alert-warning alert-dismissible fade show">
+    <span th:text="${warnMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+    <span th:text="${errorMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-end gap-3 flex-wrap mb-2">
+    <div>
+      <h2 class="fw-bold mb-1" style="color: var(--heading);">Sản phẩm nổi bật</h2>
+      <p class="text-muted mb-0">Chọn nhanh mỹ phẩm yêu thích và thêm vào giỏ hàng.</p>
+    </div>
+    <a th:href="@{/shop}" class="btn btn-light btn-sm">Làm mới danh sách</a>
+  </div>
+
+  <div class="category-list" th:if="${categories != null and !#lists.isEmpty(categories)}">
+    <a th:href="@{/shop(q=${keyword})}"
+       class="category-chip"
+       th:classappend="${selectedCategory == null or #strings.isEmpty(selectedCategory)} ? 'active' : ''">Tất cả</a>
+    <a th:each="cat : ${categories}"
+       th:href="@{/shop(q=${keyword}, category=${cat})}"
+       class="category-chip"
+       th:classappend="${cat == selectedCategory} ? 'active' : ''"
+       th:text="${cat}">Mỹ phẩm</a>
+  </div>
+
+  <div th:if="${products == null or #lists.isEmpty(products)}" class="empty-state text-center py-5">
+    <div class="empty-icon">🛍️</div>
+    <h5 class="fw-bold mb-2" style="color: var(--heading);">Không tìm thấy sản phẩm phù hợp</h5>
+    <p class="mb-3">Bạn thử tìm bằng tên khác hoặc quay lại danh sách tất cả sản phẩm.</p>
+    <a th:href="@{/shop}" class="btn btn-primary">Xem tất cả sản phẩm</a>
+  </div>
+
+  <div class="product-grid" th:if="${products != null and !#lists.isEmpty(products)}">
+    <article class="product-card" th:each="product : ${products}">
+      <a th:href="@{/shop/product/{id}(id=${product.id})}" class="product-visual" aria-label="Xem chi tiết sản phẩm">🌸</a>
+
+      <span class="product-category" th:text="${product.category != null and !#strings.isEmpty(product.category) ? product.category : 'Mỹ phẩm'}">Mỹ phẩm</span>
+
+      <a th:href="@{/shop/product/{id}(id=${product.id})}">
+        <div class="product-name" th:text="${product.name}">Tên sản phẩm</div>
+      </a>
+
+      <div class="product-brand" th:text="${product.brand != null and !#strings.isEmpty(product.brand) ? product.brand : 'Chưa xác định thương hiệu'}">Thương hiệu</div>
+      <div class="product-price" th:text="${#numbers.formatDecimal(product.salePrice == null ? 0 : product.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</div>
+
+      <span class="stock-badge"
+            th:classappend="${product.quantity != null and product.quantity > 0} ? 'in-stock' : 'out-stock'"
+            th:text="${product.quantity != null and product.quantity > 0 ? 'Còn ' + product.quantity + ' sản phẩm' : 'Hết hàng'}">Còn hàng</span>
+
+      <div class="product-card-footer">
+        <form th:action="@{/cart/add}" method="post" th:if="${product.quantity != null and product.quantity > 0}">
+          <input type="hidden" name="productId" th:value="${product.id}">
+          <input type="hidden" name="quantity" value="1">
+          <button type="submit" class="btn add-cart-btn">🛒 Thêm vào giỏ</button>
+        </form>
+        <button class="btn btn-light" disabled th:if="${product.quantity == null or product.quantity <= 0}">Hết hàng</button>
+        <a th:href="@{/shop/product/{id}(id=${product.id})}" class="btn btn-light">Xem chi tiết</a>
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer class="shop-footer">
+  <p class="mb-1 fw-bold" th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'SmartInventory Shop'}">SmartInventory Shop</p>
+  <p class="mb-1" th:if="${shopProfile != null and shopProfile.phone != null}" th:text="${shopProfile.phone}">Số điện thoại</p>
+  <p class="mb-0" th:if="${shopProfile != null and shopProfile.address != null}" th:text="${shopProfile.address}">Địa chỉ</p>
     <h1 th:text="${(shopProfile != null and shopProfile.shopName != null and !#strings.isEmpty(shopProfile.shopName)) ? shopProfile.shopName : 'peanutglam'}">peanutglam</h1>
 
     <p th:text="${(shopProfile != null and shopProfile.address != null and !#strings.isEmpty(shopProfile.address)) ? shopProfile.address : 'Cửa hàng mỹ phẩm'}">Cửa hàng mỹ phẩm</p>
