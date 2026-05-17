@@ -24,21 +24,20 @@
             </div>
 
             <div class="login-left-content">
-                <span class="login-chip">🌸 Hệ thống quản trị cửa hàng</span>
+                <span class="login-chip">🌸 Hệ thống quản lý cửa hàng mỹ phẩm</span>
 
-                <h1>Quản lý kho, đơn hàng và doanh thu dễ dàng hơn</h1>
+                <h1>Quản lý kho, đơn hàng và doanh thu trong một nơi</h1>
 
                 <p>
-                    Khu vực đăng nhập dành cho Owner và nhân viên được cấp tài khoản.
-                    Sau khi đăng nhập, bạn có thể quản lý sản phẩm, nhập hàng, đơn hàng,
-                    báo cáo doanh thu và cấu hình thông tin cửa hàng.
+                    Giao diện quản trị được thiết kế cho chủ cửa hàng và nhân viên thao tác nhanh:
+                    kiểm soát tồn kho, nhập hàng, bán hàng, báo cáo cuối ngày và theo dõi sản phẩm cận hạn.
                 </p>
 
                 <ul class="login-feature-list">
-                    <li>📦 Kiểm soát tồn kho, sản phẩm sắp hết hàng và sắp hết hạn</li>
-                    <li>🧾 Theo dõi đơn hàng, tổng bill, khách cọc và trạng thái giao hàng</li>
-                    <li>📊 Báo cáo doanh thu, lãi/lỗ và hoạt động nhập hàng</li>
-                    <li>🛍️ Trang cửa hàng công khai cho khách xem và đặt sản phẩm</li>
+                    <li>📦 Theo dõi tồn kho, nhập hàng và hạn sử dụng</li>
+                    <li>🧾 Quản lý đơn hàng, hóa đơn và trạng thái giao hàng</li>
+                    <li>📈 Báo cáo doanh thu, vốn và lãi/lỗ cuối ngày</li>
+                    <li>🛍️ Có trang cửa hàng công khai cho khách mua hàng</li>
                 </ul>
             </div>
         </section>
@@ -48,15 +47,16 @@
 
                 <div class="text-center mb-4">
                     <div class="login-form-logo">SI</div>
+                    <div class="owner-pill mx-auto">🔐 Khu vực quản trị</div>
                     <h3 class="login-title">Đăng nhập Owner</h3>
                     <p class="login-subtitle">
-                        Nhập tài khoản được cấp để truy cập Dashboard quản trị.
+                        Dành cho chủ cửa hàng và nhân viên được Owner cấp tài khoản.
                     </p>
                 </div>
 
                 <div class="login-note">
                     Tài khoản <b>Owner</b> được cấp sẵn khi triển khai ứng dụng.
-                    Nhân viên đăng nhập bằng tài khoản do Owner tạo trong mục quản lý tài khoản.
+                    Nhân viên đăng nhập bằng tài khoản do Owner tạo trong phần quản lý tài khoản.
                 </div>
 
                 <div th:if="${successMessage}" class="alert alert-success mt-3" th:text="${successMessage}"></div>
@@ -68,26 +68,33 @@
                         <input type="text"
                                name="username"
                                class="form-control login-input"
-                               placeholder="Ví dụ: owner"
+                               placeholder="Ví dụ: owner hoặc tên nhân viên"
                                required
                                autocomplete="username">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <label class="form-label login-label">Mật khẩu</label>
                         <div class="password-field">
-                            <input id="passwordInput"
-                                   type="password"
+                            <input type="password"
+                                   id="loginPassword"
                                    name="password"
-                                   class="form-control login-input pe-5"
+                                   class="form-control login-input"
                                    placeholder="Nhập mật khẩu"
                                    required
                                    autocomplete="current-password">
-                            <button class="password-toggle" type="button" onclick="togglePassword()">👁</button>
+                            <button type="button" class="password-toggle" onclick="togglePassword()">
+                                Hiện
+                            </button>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn login-submit-btn">
+                    <div class="login-helper-row">
+                        <span>Không có đăng ký công khai</span>
+                        <span>Dữ liệu nội bộ được bảo vệ</span>
+                    </div>
+
+                    <button type="submit" class="btn login-submit-btn w-100">
                         Đăng nhập hệ thống
                     </button>
                 </form>
@@ -97,8 +104,11 @@
                 </div>
 
                 <div class="login-bottom-links">
-                    <a th:href="@{/shop}" class="login-link-secondary">← Về cửa hàng</a>
+                    <a th:href="@{/shop}" class="login-link-secondary">
+                        ← Quay về cửa hàng công khai
+                    </a>
                 </div>
+
             </div>
         </section>
 
@@ -107,9 +117,14 @@
 
 <script>
     function togglePassword() {
-        const input = document.getElementById('passwordInput');
-        input.type = input.type === 'password' ? 'text' : 'password';
+        const input = document.getElementById('loginPassword');
+        const button = document.querySelector('.password-toggle');
+        if (!input || !button) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        button.textContent = isPassword ? 'Ẩn' : 'Hiện';
     }
 </script>
+
 </body>
 </html>
