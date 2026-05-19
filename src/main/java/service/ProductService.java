@@ -260,10 +260,14 @@ public class ProductService {
     }
 
     // Public products for shop (không cần auth)
+    // Public products for shop (không cần auth)
+    @Transactional(readOnly = true)
     public List<Product> getPublicProducts(String keyword) {
         if (!StringUtils.hasText(keyword)) {
-            return productRepository.findAllByActiveTrueAndQuantityGreaterThanOrderByIdDesc(0);
+            return productRepository
+                    .findAllByActiveTrueAndQuantityGreaterThanOrderByQuantityDescIdDesc(0);
         }
+
         return productRepository.searchPublicProducts(keyword.trim());
     }
     @Transactional(readOnly = true)
