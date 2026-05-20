@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -12,7 +13,8 @@ import java.time.LocalDate;
 @Table(name = "products")
 public class Product {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank(message = "Mã sản phẩm không được để trống")
@@ -26,24 +28,36 @@ public class Product {
     private String name;
 
     private String category;
+
     private String brand;
 
-    /** Tồn kho hiện tại = totalQuantity - soldQuantity */
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
+    /**
+     * Tồn kho hiện tại = totalQuantity - soldQuantity
+     */
     @Min(value = 0, message = "Số lượng tồn không được âm")
     @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer quantity = 0;
 
-    /** Tổng số lượng đã nhập (tăng qua phiếu nhập) */
+    /**
+     * Tổng số lượng đã nhập
+     */
     @Min(value = 0, message = "Tổng số lượng không được âm")
     @Column(name = "total_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer totalQuantity = 0;
 
-    /** Tổng số lượng đã bán (tăng khi tạo đơn hàng) */
+    /**
+     * Tổng số lượng đã bán
+     */
     @Min(value = 0, message = "Số lượng xuất không được âm")
     @Column(name = "sold_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer soldQuantity = 0;
 
-    /** = totalQuantity - soldQuantity (cập nhật khi save) */
+    /**
+     * Tồn kho tính toán
+     */
     @Min(value = 0, message = "Tồn kho không được âm")
     @Column(name = "inventory_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer inventoryQuantity = 0;
@@ -74,127 +88,277 @@ public class Product {
     @Column(name = "profit_status", length = 20)
     private String profitStatus = "Lãi";
 
-    @ManyToOne @JoinColumn(name = "supplier_id")
+    @ManyToOne
+    @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ManyToOne @JoinColumn(name = "user_id")
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private AppUser user;
 
-    /** Soft delete */
+    /**
+     * Soft delete:
+     * true = đang hoạt động
+     * false = đã ẩn
+     */
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean active = true;
 
-    // ======================================================
-    // Lifecycle - chỉ @PrePersist + @PreUpdate, KHÔNG @PostLoad
-    // để tránh Hibernate dirty-tracking không cần thiết
-    // ======================================================
     @PrePersist
     @PreUpdate
     public void recalculateInventoryFields() {
-        int sold  = nn(soldQuantity);
+        int sold = nn(soldQuantity);
         int total = nn(totalQuantity);
         int stock = nn(quantity);
 
-        if (total == 0 && stock > 0) total = stock + sold;
-        if (sold > total) total = sold;
+        if (total == 0 && stock > 0) {
+            total = stock + sold;
+        }
 
-        totalQuantity     = total;
-        soldQuantity      = sold;
+        if (sold > total) {
+            total = sold;
+        }
+
+        totalQuantity = total;
+        soldQuantity = sold;
         inventoryQuantity = Math.max(total - sold, 0);
-        quantity          = inventoryQuantity;
+        quantity = inventoryQuantity;
 
-        BigDecimal ip  = m(importPrice);
-        BigDecimal sp  = m(salePrice);
-        BigDecimal qiv = BigDecimal.valueOf(inventoryQuantity);
-        BigDecimal qtd = BigDecimal.valueOf(total);
-        BigDecimal qsd = BigDecimal.valueOf(sold);
+        BigDecimal ip = money(importPrice);
+        BigDecimal sp = money(salePrice);
 
-        totalImportAmount = ip.multiply(qtd);
-        totalSaleAmount   = sp.multiply(qtd);
-        capital           = ip.multiply(qiv);
-        profit            = sp.subtract(ip).multiply(qsd);
-        profitStatus      = profit.signum() >= 0 ? "Lãi" : "Lỗ";
+        BigDecimal totalQty = BigDecimal.valueOf(totalQuantity);
+        BigDecimal stockQty = BigDecimal.valueOf(inventoryQuantity);
+        BigDecimal soldQty = BigDecimal.valueOf(soldQuantity);
+
+        totalImportAmount = ip.multiply(totalQty);
+        totalSaleAmount = sp.multiply(totalQty);
+        capital = ip.multiply(stockQty);
+        profit = sp.subtract(ip).multiply(soldQty);
+        profitStatus = profit.signum() >= 0 ? "Lãi" : "Lỗ";
     }
 
-    // ======================================================
-    // Business operations
-    // ======================================================
     public void increaseStock(int amount) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
+
         totalQuantity = nn(totalQuantity) + amount;
         recalculateInventoryFields();
     }
 
     public void registerSale(int amount) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
+
         soldQuantity = nn(soldQuantity) + amount;
         recalculateInventoryFields();
     }
 
     public void restoreSale(int amount) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
+
         soldQuantity = Math.max(nn(soldQuantity) - amount, 0);
         recalculateInventoryFields();
     }
 
-    // ======================================================
-    // Getters & Setters - KHÔNG có side effect trong getter
-    // ======================================================
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getCode() { return code; }
-    public void setCode(String c) { this.code = c != null ? c.trim() : null; }
+    public String getCode() {
+        return code;
+    }
 
-    public String getName() { return name; }
-    public void setName(String n) { this.name = n != null ? n.trim() : null; }
+    public void setCode(String code) {
+        this.code = trim(code);
+    }
 
-    public String getCategory() { return category; }
-    public void setCategory(String c) { this.category = c != null ? c.trim() : null; }
+    public String getName() {
+        return name;
+    }
 
-    public String getBrand() { return brand; }
-    public void setBrand(String b) { this.brand = b != null ? b.trim() : null; }
+    public void setName(String name) {
+        this.name = trim(name);
+    }
 
-    public Integer getQuantity() { return nn(quantity); }
-    public void setQuantity(Integer q) { this.quantity = nn(q); }
+    public String getCategory() {
+        return category;
+    }
 
-    public Integer getTotalQuantity() { return nn(totalQuantity); }
-    public void setTotalQuantity(Integer t) { this.totalQuantity = nn(t); }
+    public void setCategory(String category) {
+        this.category = trim(category);
+    }
 
-    public Integer getSoldQuantity() { return nn(soldQuantity); }
-    public void setSoldQuantity(Integer s) { this.soldQuantity = nn(s); }
+    public String getBrand() {
+        return brand;
+    }
 
-    public Integer getInventoryQuantity() { return nn(inventoryQuantity); }
+    public void setBrand(String brand) {
+        this.brand = trim(brand);
+    }
 
-    public BigDecimal getImportPrice() { return m(importPrice); }
-    public void setImportPrice(BigDecimal p) { this.importPrice = m(p); }
+    public String getImageUrl() {
+        return imageUrl;
+    }
 
-    public BigDecimal getSalePrice() { return m(salePrice); }
-    public void setSalePrice(BigDecimal p) { this.salePrice = m(p); }
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = trim(imageUrl);
+    }
 
-    public LocalDate getExpiryDate() { return expiryDate; }
-    public void setExpiryDate(LocalDate d) { this.expiryDate = d; }
+    public Integer getQuantity() {
+        return nn(quantity);
+    }
 
-    public BigDecimal getTotalImportAmount() { return m(totalImportAmount); }
-    public BigDecimal getTotalSaleAmount()   { return m(totalSaleAmount); }
-    public BigDecimal getCapital()           { return m(capital); }
-    public BigDecimal getProfit()            { return profit == null ? BigDecimal.ZERO : profit; }
-    public String getProfitStatus()          { return profitStatus != null ? profitStatus : "Lãi"; }
+    public void setQuantity(Integer quantity) {
+        this.quantity = nn(quantity);
+    }
 
-    public Supplier getSupplier() { return supplier; }
-    public void setSupplier(Supplier s) { this.supplier = s; }
+    public Integer getTotalQuantity() {
+        return nn(totalQuantity);
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String d) { this.description = d != null ? d.trim() : null; }
+    public void setTotalQuantity(Integer totalQuantity) {
+        this.totalQuantity = nn(totalQuantity);
+    }
 
-    public AppUser getUser() { return user; }
-    public void setUser(AppUser u) { this.user = u; }
+    public Integer getSoldQuantity() {
+        return nn(soldQuantity);
+    }
 
-    public Boolean getActive() { return active == null ? true : active; }
-    public void setActive(Boolean a) { this.active = a == null ? true : a; }
+    public void setSoldQuantity(Integer soldQuantity) {
+        this.soldQuantity = nn(soldQuantity);
+    }
 
-    private int nn(Integer v) { return (v == null || v < 0) ? 0 : v; }
-    private BigDecimal m(BigDecimal v) { return (v == null || v.signum() < 0) ? BigDecimal.ZERO : v; }
+    public Integer getInventoryQuantity() {
+        return nn(inventoryQuantity);
+    }
+
+    public void setInventoryQuantity(Integer inventoryQuantity) {
+        this.inventoryQuantity = nn(inventoryQuantity);
+    }
+
+    public BigDecimal getImportPrice() {
+        return money(importPrice);
+    }
+
+    public void setImportPrice(BigDecimal importPrice) {
+        this.importPrice = money(importPrice);
+    }
+
+    public BigDecimal getSalePrice() {
+        return money(salePrice);
+    }
+
+    public void setSalePrice(BigDecimal salePrice) {
+        this.salePrice = money(salePrice);
+    }
+
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDate expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public BigDecimal getTotalImportAmount() {
+        return money(totalImportAmount);
+    }
+
+    public void setTotalImportAmount(BigDecimal totalImportAmount) {
+        this.totalImportAmount = money(totalImportAmount);
+    }
+
+    public BigDecimal getTotalSaleAmount() {
+        return money(totalSaleAmount);
+    }
+
+    public void setTotalSaleAmount(BigDecimal totalSaleAmount) {
+        this.totalSaleAmount = money(totalSaleAmount);
+    }
+
+    public BigDecimal getCapital() {
+        return money(capital);
+    }
+
+    public void setCapital(BigDecimal capital) {
+        this.capital = money(capital);
+    }
+
+    public BigDecimal getProfit() {
+        return profit == null ? BigDecimal.ZERO : profit;
+    }
+
+    public void setProfit(BigDecimal profit) {
+        this.profit = profit == null ? BigDecimal.ZERO : profit;
+    }
+
+    public String getProfitStatus() {
+        return profitStatus;
+    }
+
+    public void setProfitStatus(String profitStatus) {
+        this.profitStatus = trim(profitStatus);
+    }
+
+    public Supplier getSupplier() {
+        return supplier;
+    }
+
+    public void setSupplier(Supplier supplier) {
+        this.supplier = supplier;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = trim(description);
+    }
+
+    public AppUser getUser() {
+        return user;
+    }
+
+    public void setUser(AppUser user) {
+        this.user = user;
+    }
+
+    public Boolean getActive() {
+        return active == null || active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active == null || active;
+    }
+
+    @Transient
+    public boolean isInStock() {
+        return getQuantity() > 0;
+    }
+
+    @Transient
+    public boolean hasImage() {
+        return imageUrl != null && !imageUrl.trim().isEmpty();
+    }
+
+    private int nn(Integer value) {
+        return value == null || value < 0 ? 0 : value;
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value == null || value.signum() < 0 ? BigDecimal.ZERO : value;
+    }
+
+    private String trim(String value) {
+        return value == null ? null : value.trim();
+    }
 }

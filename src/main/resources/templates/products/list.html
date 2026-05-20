@@ -7,76 +7,436 @@
 
   <link rel="stylesheet" th:href="@{/css/style.css}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    /*
+     * Chỉ áp dụng cho trang sản phẩm.
+     * Mục tiêu: dễ nhìn hơn + scroll mượt hơn + giảm lag khi bảng nhiều cột.
+     */
+    .product-list-page {
+        --pink-main: #d85f91;
+        --pink-dark: #9d3d66;
+        --pink-soft: #fff3f8;
+        --pink-border: #f3c8d9;
+        --text-main: #2f2430;
+        --text-muted: #7e6976;
+        --green: #0f8f5f;
+        --green-bg: #e8fff4;
+        --yellow: #b77900;
+        --yellow-bg: #fff7db;
+        --red: #d92d52;
+        --red-bg: #fff0f3;
+    }
+
+    .product-list-page .page-card {
+        overflow: hidden;
+    }
+
+    .product-list-page .product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 22px;
+    }
+
+    .product-list-page .product-header h2 {
+        color: var(--text-main);
+        font-weight: 850;
+        letter-spacing: -0.8px;
+        margin-bottom: 6px;
+    }
+
+    .product-list-page .product-header p {
+        color: var(--text-muted);
+        margin-bottom: 0;
+        font-weight: 600;
+    }
+
+    .product-list-page .header-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .product-list-page .filter-panel {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) 250px 250px 86px;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--pink-border);
+        background: #fff9fc;
+        border-radius: 24px;
+        margin-bottom: 18px;
+    }
+
+    .product-list-page .filter-panel .form-control,
+    .product-list-page .filter-panel .form-select {
+        min-height: 50px;
+        border-radius: 16px;
+        border-color: #f1cddd;
+        box-shadow: none !important;
+    }
+
+    .product-list-page .filter-panel .form-control:focus,
+    .product-list-page .filter-panel .form-select:focus {
+        border-color: var(--pink-main);
+    }
+
+    .product-list-page .product-table-shell {
+        position: relative;
+        width: 100%;
+        max-height: 68vh;
+        overflow: auto;
+        border: 1px solid var(--pink-border);
+        border-radius: 24px;
+        background: #ffffff;
+
+        /*
+         * Tối ưu scroll.
+         */
+        contain: content;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .product-list-page .product-table-shell::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+
+    .product-list-page .product-table-shell::-webkit-scrollbar-track {
+        background: #fff4f8;
+        border-radius: 999px;
+    }
+
+    .product-list-page .product-table-shell::-webkit-scrollbar-thumb {
+        background: #df75a3;
+        border-radius: 999px;
+        border: 3px solid #fff4f8;
+    }
+
+    .product-list-page .product-table-shell::-webkit-scrollbar-thumb:hover {
+        background: #c84f80;
+    }
+
+    .product-list-page .product-table {
+        min-width: 1780px;
+        width: 100%;
+        table-layout: fixed;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .product-list-page .product-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8c8da !important;
+        color: #7b314f !important;
+        font-size: 14px;
+        font-weight: 850;
+        white-space: nowrap;
+        padding: 15px 14px !important;
+        border-bottom: 1px solid #eeb5cb !important;
+        vertical-align: middle;
+    }
+
+    .product-list-page .product-table tbody td {
+        padding: 16px 14px !important;
+        vertical-align: middle;
+        color: var(--text-main);
+        border-bottom: 1px solid #f7e0e9 !important;
+        background: #fff;
+        font-size: 15px;
+    }
+
+    .product-list-page .product-table tbody tr:nth-child(even) td {
+        background: #fffafd;
+    }
+
+    .product-list-page .product-table tbody tr:hover td {
+        background: #fff3f8;
+    }
+
+    .product-list-page .product-code {
+        font-weight: 800;
+        color: #3a2a36;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .product-list-page .product-name {
+        font-weight: 800;
+        color: #2f2430;
+        line-height: 1.45;
+        margin-bottom: 4px;
+    }
+
+    .product-list-page .product-brand {
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .product-list-page .money-text {
+        white-space: nowrap;
+        font-weight: 750;
+        color: #382c37;
+    }
+
+    .product-list-page .number-text {
+        font-weight: 750;
+        color: #382c37;
+    }
+
+    .product-list-page .si-stock-badge,
+    .product-list-page .si-profit-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 54px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 850;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .product-list-page .stock-good {
+        background: var(--green-bg);
+        color: var(--green);
+        border-color: #b8efd4;
+    }
+
+    .product-list-page .stock-low {
+        background: var(--yellow-bg);
+        color: var(--yellow);
+        border-color: #f1d583;
+    }
+
+    .product-list-page .stock-out {
+        background: var(--red-bg);
+        color: var(--red);
+        border-color: #f3b7c3;
+    }
+
+    .product-list-page .profit-good {
+        background: var(--green-bg);
+        color: var(--green);
+        border-color: #b8efd4;
+    }
+
+    .product-list-page .profit-bad {
+        background: var(--red-bg);
+        color: var(--red);
+        border-color: #f3b7c3;
+    }
+
+    .product-list-page .profit-neutral {
+        background: #f5f1f4;
+        color: #6d5d68;
+        border-color: #e6dce2;
+    }
+
+    .product-list-page .expiry-text {
+        font-weight: 700;
+        color: #3d303b;
+        line-height: 1.4;
+    }
+
+    .product-list-page .supplier-text {
+        color: #3d303b;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .product-list-page .action-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .product-list-page .action-group .btn {
+        white-space: nowrap;
+        border-radius: 14px;
+        font-weight: 750;
+    }
+
+    .product-list-page .empty-products {
+        padding: 46px 18px !important;
+        text-align: center;
+        color: var(--text-muted);
+    }
+
+    .product-list-page .pagination-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 22px;
+    }
+
+    .product-list-page .pagination .page-link {
+        border-radius: 12px;
+        margin: 0 3px;
+        border-color: #f1cddd;
+        color: var(--pink-dark);
+        font-weight: 700;
+    }
+
+    .product-list-page .pagination .active .page-link {
+        background: var(--pink-main);
+        border-color: var(--pink-main);
+        color: #ffffff;
+    }
+
+    /*
+     * Giảm lag:
+     * Không dùng transition/transform trong bảng.
+     */
+    .product-list-page .product-table *,
+    .product-list-page .product-table-shell * {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    @media (max-width: 1200px) {
+        .product-list-page .filter-panel {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .product-list-page .filter-panel button {
+            grid-column: span 2;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .product-list-page .product-header {
+            flex-direction: column;
+        }
+
+        .product-list-page .header-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .product-list-page .filter-panel {
+            grid-template-columns: 1fr;
+        }
+
+        .product-list-page .filter-panel button {
+            grid-column: auto;
+        }
+    }
+  </style>
 </head>
 
-<body class="app-bg">
+<body class="app-bg product-list-page">
+
 <div class="page-container page-wide">
 
   <div class="page-top-actions">
-    <a class="btn btn-light btn-soft" th:href="@{/}">← Về Dashboard</a>
+    <a class="btn btn-light btn-soft" th:href="@{/dashboard}">
+      ← Về Dashboard
+    </a>
+
+    <a class="btn btn-outline-primary" th:href="@{/shop}" target="_blank">
+      Xem cửa hàng
+    </a>
   </div>
 
   <section class="page-card">
-    <div class="page-header">
+
+    <div class="product-header">
       <div>
         <h2>Quản lý sản phẩm</h2>
+
         <p>
           Hiển thị 30 sản phẩm mỗi trang.
-          <span th:if="${totalElements != null}" th:text="'Tổng: ' + ${totalElements} + ' sản phẩm'"></span>
+          <span th:if="${totalElements != null}">
+                        Tổng:
+                        <b th:text="${totalElements}">0</b>
+                        sản phẩm
+                    </span>
         </p>
       </div>
 
       <div class="header-actions">
         <a class="btn btn-primary" th:href="@{/products/create}">
-          Thêm sản phẩm
+          + Thêm sản phẩm
         </a>
 
-        <form id="deleteAllProductsForm"
-              th:action="@{/products/delete-all}"
-              method="post"
-              class="d-inline">
-
-          <input type="hidden" name="ownerPassword" id="deleteAllProductsPassword">
-
-          <button type="button"
-                  class="btn btn-danger"
-                  onclick="submitDeleteAllProducts()">
-            Xóa toàn bộ
-          </button>
-        </form>
+        <a class="btn btn-danger"
+           th:href="@{/products/delete-all}"
+           onclick="return confirm('Bạn có chắc muốn xóa toàn bộ sản phẩm? Hệ thống sẽ yêu cầu xác thực Owner nếu đã cấu hình.');">
+          Xóa toàn bộ
+        </a>
       </div>
     </div>
 
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-    <form method="get" th:action="@{/products}" class="filter-bar">
+    <form method="get" th:action="@{/products}" class="filter-panel">
       <input type="text"
              class="form-control"
              name="keyword"
              th:value="${keyword}"
-             placeholder="Tìm theo mã hoặc tên sản phẩm">
+             placeholder="Tìm theo mã, tên sản phẩm, thương hiệu hoặc danh mục">
 
       <select class="form-select" name="stockStatus">
         <option value="">Tất cả tồn kho</option>
-        <option value="AVAILABLE" th:selected="${stockStatus == 'AVAILABLE'}">Còn hàng</option>
-        <option value="LOW_STOCK" th:selected="${stockStatus == 'LOW_STOCK'}">Sắp hết hàng</option>
-        <option value="OUT_OF_STOCK" th:selected="${stockStatus == 'OUT_OF_STOCK'}">Hết hàng</option>
+        <option value="AVAILABLE" th:selected="${stockStatus == 'AVAILABLE'}">
+          Còn hàng nhiều
+        </option>
+        <option value="LOW_STOCK" th:selected="${stockStatus == 'LOW_STOCK'}">
+          Sắp hết hàng
+        </option>
+        <option value="OUT_OF_STOCK" th:selected="${stockStatus == 'OUT_OF_STOCK'}">
+          Hết hàng
+        </option>
       </select>
 
       <select class="form-select" name="expiryStatus">
         <option value="">Tất cả hạn dùng</option>
-        <option value="EXPIRING_SOON" th:selected="${expiryStatus == 'EXPIRING_SOON'}">Sắp hết hạn</option>
-        <option value="EXPIRED" th:selected="${expiryStatus == 'EXPIRED'}">Đã hết hạn</option>
+        <option value="EXPIRING_SOON" th:selected="${expiryStatus == 'EXPIRING_SOON'}">
+          Sắp hết hạn
+        </option>
+        <option value="EXPIRED" th:selected="${expiryStatus == 'EXPIRED'}">
+          Đã hết hạn
+        </option>
       </select>
 
-      <button class="btn btn-outline-primary" type="submit">
+      <button type="submit" class="btn btn-outline-primary">
         Lọc
       </button>
     </form>
 
-    <div class="data-table-wrap table-scroll-box">
-      <table class="table table-hover align-middle data-table product-data-table">
+    <div class="product-table-shell">
+      <table class="table product-table align-middle">
+        <colgroup>
+          <col style="width: 150px;">
+          <col style="width: 280px;">
+          <col style="width: 130px;">
+          <col style="width: 100px;">
+          <col style="width: 100px;">
+          <col style="width: 100px;">
+          <col style="width: 140px;">
+          <col style="width: 140px;">
+          <col style="width: 160px;">
+          <col style="width: 160px;">
+          <col style="width: 130px;">
+          <col style="width: 130px;">
+          <col style="width: 100px;">
+          <col style="width: 130px;">
+          <col style="width: 150px;">
+          <col style="width: 160px;">
+        </colgroup>
+
         <thead>
         <tr>
           <th>Mã SP</th>
@@ -99,52 +459,138 @@
         </thead>
 
         <tbody>
-        <tr th:if="${#lists.isEmpty(products)}">
-          <td colspan="16" class="text-center text-muted py-4">
-            Chưa có sản phẩm nào
+        <tr th:if="${products == null or #lists.isEmpty(products)}">
+          <td colspan="16" class="empty-products">
+            <div style="font-size: 48px;">📦</div>
+            <h5 class="fw-bold mt-3">Chưa có sản phẩm</h5>
+            <p class="mb-0">Bạn có thể thêm sản phẩm mới hoặc import dữ liệu từ Google Sheet.</p>
           </td>
         </tr>
 
         <tr th:each="p : ${products}">
-          <td class="fw-semibold" th:text="${p.code}"></td>
-
           <td>
-            <div class="fw-semibold" th:text="${p.name}"></div>
-            <div class="small text-muted" th:text="${p.brand}"></div>
+            <div class="product-code" th:text="${p.code}">
+              SP001
+            </div>
           </td>
 
-          <td th:text="${p.category}"></td>
-          <td th:text="${p.totalQuantity}"></td>
-          <td th:text="${p.soldQuantity}"></td>
-
           <td>
-            <span th:classappend="${p.inventoryQuantity <= 5} ? ' bg-warning text-dark' : ' bg-success'"
-                  class="badge"
-                  th:text="${p.inventoryQuantity}">
-              0
-            </span>
+            <div class="product-name" th:text="${p.name}">
+              Tên sản phẩm
+            </div>
+
+            <div class="product-brand"
+                 th:text="${p.brand != null and !#strings.isEmpty(p.brand) ? p.brand : 'Chưa xác định'}">
+              Brand
+            </div>
+
+            <div class="mt-2"
+                 th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">
+                            <span class="badge rounded-pill"
+                                  style="background:#fff0f6; color:#c84f80; border:1px solid #f1c5d6;">
+                                Có ảnh bán hàng
+                            </span>
+            </div>
           </td>
 
-          <td th:text="${#numbers.formatDecimal(p.importPrice, 0, 'COMMA', 0, 'POINT')}"></td>
-          <td th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')}"></td>
-          <td th:text="${#numbers.formatDecimal(p.totalImportAmount, 0, 'COMMA', 0, 'POINT')}"></td>
-          <td th:text="${#numbers.formatDecimal(p.totalSaleAmount, 0, 'COMMA', 0, 'POINT')}"></td>
-          <td th:text="${#numbers.formatDecimal(p.capital, 0, 'COMMA', 0, 'POINT')}"></td>
-          <td th:text="${#numbers.formatDecimal(p.profit, 0, 'COMMA', 0, 'POINT')}"></td>
-
-          <td>
-            <span class="badge"
-                  th:classappend="${p.profit.signum() >= 0} ? ' bg-success' : ' bg-danger'"
-                  th:text="${p.profitStatus}">
-              Lãi
-            </span>
+          <td th:text="${p.category != null and !#strings.isEmpty(p.category) ? p.category : 'Chưa phân loại'}">
+            Danh mục
           </td>
 
-          <td th:text="${p.expiryDate}"></td>
-          <td th:text="${p.supplier != null ? p.supplier.name : ''}"></td>
+          <td>
+                        <span class="number-text"
+                              th:text="${p.totalQuantity != null ? p.totalQuantity : 0}">
+                            0
+                        </span>
+          </td>
 
           <td>
-            <div class="row-actions no-wrap-actions">
+                        <span class="number-text"
+                              th:text="${p.soldQuantity != null ? p.soldQuantity : 0}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="si-stock-badge"
+                              th:classappend="${p.quantity == null or p.quantity <= 0}
+                                                ? ' stock-out'
+                                                : (${p.quantity <= 5} ? ' stock-low' : ' stock-good')"
+                              th:text="${p.quantity != null ? p.quantity : 0}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.importPrice != null ? p.importPrice : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.salePrice != null ? p.salePrice : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.totalImportAmount != null ? p.totalImportAmount : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.totalSaleAmount != null ? p.totalSaleAmount : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.capital != null ? p.capital : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="money-text"
+                              th:text="${#numbers.formatDecimal(p.profit != null ? p.profit : 0, 0, 'COMMA', 0, 'POINT')}">
+                            0
+                        </span>
+          </td>
+
+          <td>
+                        <span class="si-profit-badge"
+                              th:classappend="${p.profitStatus != null and #strings.equalsIgnoreCase(p.profitStatus, 'Lỗ')}
+                                                ? ' profit-bad'
+                                                : (${p.profitStatus != null and #strings.equalsIgnoreCase(p.profitStatus, 'Lãi')}
+                                                    ? ' profit-good'
+                                                    : ' profit-neutral')"
+                              th:text="${p.profitStatus != null and !#strings.isEmpty(p.profitStatus) ? p.profitStatus : 'N/A'}">
+                            Lãi
+                        </span>
+          </td>
+
+          <td>
+                        <span class="expiry-text"
+                              th:text="${p.expiryDate != null ? p.expiryDate : 'Chưa có'}">
+                            2026-01-01
+                        </span>
+          </td>
+
+          <td>
+                        <span class="supplier-text"
+                              th:text="${p.supplier != null ? p.supplier.name : 'Chưa có'}">
+                            Nhà cung cấp
+                        </span>
+          </td>
+
+          <td>
+            <div class="action-group">
               <a class="btn btn-sm btn-outline-primary"
                  th:href="@{/products/edit/{id}(id=${p.id})}">
                 Sửa
@@ -152,7 +598,7 @@
 
               <a class="btn btn-sm btn-outline-danger"
                  th:href="@{/products/delete/{id}(id=${p.id})}"
-                 onclick="return confirm('Ẩn sản phẩm này? Dữ liệu đơn hàng cũ vẫn được giữ.');">
+                 onclick="return confirm('Bạn có chắc muốn xóa/ẩn sản phẩm này không?');">
                 Xóa
               </a>
             </div>
@@ -162,57 +608,38 @@
       </table>
     </div>
 
-    <div class="pagination-bar" th:if="${totalPages != null and totalPages > 1}">
-      <a class="btn btn-light btn-soft"
-         th:classappend="${currentPage == 0} ? ' disabled'"
-         th:href="@{/products(page=${currentPage - 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
-        ← Trang trước
-      </a>
+    <div th:if="${totalPages != null and totalPages > 1}" class="pagination-wrap">
+      <nav>
+        <ul class="pagination mb-0">
+          <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/products(page=${currentPage - 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
+              Trước
+            </a>
+          </li>
 
-      <span th:text="'Trang ' + ${currentPage + 1} + ' / ' + ${totalPages}">
-        Trang 1 / 1
-      </span>
+          <li class="page-item"
+              th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+              th:classappend="${i == currentPage} ? 'active'">
+            <a class="page-link"
+               th:href="@{/products(page=${i}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}"
+               th:text="${i + 1}">
+              1
+            </a>
+          </li>
 
-      <a class="btn btn-light btn-soft"
-         th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'"
-         th:href="@{/products(page=${currentPage + 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
-        Trang sau →
-      </a>
+          <li class="page-item" th:classappend="${currentPage + 1 >= totalPages} ? 'disabled'">
+            <a class="page-link"
+               th:href="@{/products(page=${currentPage + 1}, keyword=${keyword}, stockStatus=${stockStatus}, expiryStatus=${expiryStatus})}">
+              Sau
+            </a>
+          </li>
+        </ul>
+      </nav>
     </div>
 
   </section>
 </div>
-
-<script>
-  function submitDeleteAllProducts() {
-    const firstConfirm = confirm(
-      "Bạn đang yêu cầu XÓA TOÀN BỘ SẢN PHẨM.\n\n" +
-      "Thao tác này chỉ dành cho Owner.\n" +
-      "Bạn có chắc chắn muốn tiếp tục không?"
-    );
-
-    if (!firstConfirm) return;
-
-    const password = prompt("Nhập mật khẩu Owner để xác nhận xóa toàn bộ sản phẩm:");
-
-    if (password === null) return;
-
-    if (password.trim() === "") {
-      alert("Bạn bắt buộc phải nhập mật khẩu Owner.");
-      return;
-    }
-
-    const finalConfirm = confirm(
-      "Xác nhận lần cuối: hệ thống sẽ xóa/ẩn toàn bộ sản phẩm.\n\n" +
-      "Bạn chắc chắn muốn thực hiện?"
-    );
-
-    if (!finalConfirm) return;
-
-    document.getElementById("deleteAllProductsPassword").value = password;
-    document.getElementById("deleteAllProductsForm").submit();
-  }
-</script>
 
 </body>
 </html>

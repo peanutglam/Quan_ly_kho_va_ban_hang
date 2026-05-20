@@ -4,129 +4,733 @@
   <meta charset="UTF-8">
   <title>Chi tiết đơn hàng</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <link rel="stylesheet" th:href="@{/css/style.css}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    .order-detail-page {
+        background:
+                radial-gradient(circle at top left, #fff0f6 0%, transparent 34%),
+                linear-gradient(180deg, #fff8fb 0%, #fff1f7 100%);
+    }
+
+    .order-detail-page .detail-layout {
+        display: grid;
+        gap: 24px;
+    }
+
+    .order-detail-page .detail-action-card {
+        display: grid;
+        gap: 18px;
+    }
+
+    .order-detail-page .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+    }
+
+    .order-detail-page .detail-header h2 {
+        margin-bottom: 8px;
+        font-size: 44px;
+        font-weight: 800;
+        color: #2e202e;
+    }
+
+    .order-detail-page .detail-header p {
+        margin-bottom: 0;
+        color: #8a7380;
+        font-weight: 650;
+    }
+
+    .order-detail-page .status-form {
+        padding: 18px;
+        border-radius: 24px;
+        background: #fff8fb;
+        border: 1px solid #f4d4df;
+    }
+
+    .order-detail-page .status-row {
+        display: grid;
+        grid-template-columns: 1fr 90px;
+        gap: 12px;
+    }
+
+    .order-detail-page .invoice-card-pro {
+        background: #ffffff;
+        border: 1px solid #f1d4df;
+        border-radius: 30px;
+        box-shadow: 0 18px 46px rgba(199, 87, 133, 0.12);
+        overflow: hidden;
+    }
+
+    .order-detail-page .invoice-top {
+        padding: 30px 34px;
+        background:
+                radial-gradient(circle at top right, rgba(255,255,255,0.75), transparent 26%),
+                linear-gradient(135deg, #fff1f7, #ffe4ef);
+        border-bottom: 1px solid #f1d4df;
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        align-items: flex-start;
+    }
+
+    .order-detail-page .shop-brand-invoice {
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+    }
+
+    .order-detail-page .invoice-logo {
+        width: 78px;
+        height: 78px;
+        border-radius: 24px;
+        object-fit: cover;
+        border: 1px solid #f1c9d8;
+        background: white;
+    }
+
+    .order-detail-page .invoice-logo-fallback {
+        width: 78px;
+        height: 78px;
+        border-radius: 24px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #ec8fb2, #c84f80);
+        color: white;
+        font-size: 32px;
+        font-weight: 800;
+        box-shadow: 0 12px 28px rgba(200, 79, 128, 0.18);
+    }
+
+    .order-detail-page .shop-info h1 {
+        margin: 0 0 8px;
+        color: #2e202e;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    .order-detail-page .shop-info p {
+        margin: 0 0 5px;
+        color: #6f5d68;
+        line-height: 1.55;
+    }
+
+    .order-detail-page .invoice-code-box {
+        text-align: right;
+        min-width: 280px;
+    }
+
+    .order-detail-page .invoice-code-box span {
+        display: inline-flex;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: white;
+        color: #c84f80;
+        border: 1px solid #f0c7d8;
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 12px;
+    }
+
+    .order-detail-page .invoice-code-box h3 {
+        margin: 0;
+        color: #2e202e;
+        font-size: 24px;
+        font-weight: 800;
+        word-break: break-word;
+        line-height: 1.35;
+    }
+
+    .order-detail-page .invoice-body {
+        padding: 30px 34px 36px;
+    }
+
+    .order-detail-page .invoice-section-title {
+        margin: 0 0 14px;
+        color: #2e202e;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .order-detail-page .top-info-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 20px;
+        margin-bottom: 22px;
+    }
+
+    .order-detail-page .info-card {
+        padding: 22px;
+        border-radius: 24px;
+        border: 1px solid #f1d4df;
+        background: #fffafd;
+    }
+
+    .order-detail-page .info-card h4 {
+        font-size: 19px;
+        font-weight: 800;
+        margin-bottom: 16px;
+        color: #2e202e;
+    }
+
+    .order-detail-page .info-line {
+        display: grid;
+        grid-template-columns: 145px 1fr;
+        gap: 12px;
+        margin-bottom: 11px;
+        color: #382c37;
+        line-height: 1.55;
+    }
+
+    .order-detail-page .info-line:last-child {
+        margin-bottom: 0;
+    }
+
+    .order-detail-page .info-line b {
+        color: #6f5261;
+    }
+
+    .order-detail-page .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 800;
+        background: #fff0f6;
+        color: #af3f6c;
+        border: 1px solid #f1c5d6;
+        min-width: 160px;
+        text-align: center;
+    }
+
+    .order-detail-page .bill-summary-card {
+        margin-bottom: 24px;
+        border-radius: 26px;
+        overflow: hidden;
+        border: 1px solid #f0c7d8;
+        background: linear-gradient(180deg, #fff8fb, #ffffff);
+        box-shadow: 0 12px 30px rgba(199, 87, 133, 0.08);
+    }
+
+    .order-detail-page .bill-summary-header {
+        padding: 18px 22px;
+        background: linear-gradient(135deg, #ec8fb2, #c84f80);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .order-detail-page .bill-summary-header h4 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+    }
+
+    .order-detail-page .bill-summary-header span {
+        font-weight: 700;
+        opacity: 0.95;
+    }
+
+    .order-detail-page .bill-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0;
+    }
+
+    .order-detail-page .bill-box {
+        padding: 20px 22px;
+        border-right: 1px solid #f5dbe5;
+    }
+
+    .order-detail-page .bill-box:last-child {
+        border-right: none;
+    }
+
+    .order-detail-page .bill-box span {
+        display: block;
+        color: #8a7380;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .order-detail-page .bill-box strong {
+        display: block;
+        color: #2e202e;
+        font-size: 24px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .order-detail-page .bill-box.final {
+        background: #fff0f6;
+    }
+
+    .order-detail-page .bill-box.final strong {
+        color: #c84f80;
+    }
+
+    .order-detail-page .invoice-table-wrap {
+        overflow-x: auto;
+        border: 1px solid #f1d4df;
+        border-radius: 22px;
+        background: white;
+        margin-bottom: 22px;
+    }
+
+    .order-detail-page .invoice-table-pro {
+        min-width: 760px;
+        margin-bottom: 0;
+    }
+
+    .order-detail-page .invoice-table-pro thead th {
+        background: #f9c8da !important;
+        color: #78334f !important;
+        font-weight: 800 !important;
+        border-bottom: 1px solid #efb7cb !important;
+        padding: 16px !important;
+        white-space: nowrap;
+    }
+
+    .order-detail-page .invoice-table-pro tbody td {
+        padding: 16px !important;
+        border-bottom: 1px solid #f8e5ed !important;
+        vertical-align: middle !important;
+        color: #332633;
+    }
+
+    .order-detail-page .invoice-table-pro tbody tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    .order-detail-page .product-name-cell {
+        font-weight: 750;
+        color: #302330;
+        line-height: 1.5;
+    }
+
+    .order-detail-page .money-cell {
+        white-space: nowrap;
+        font-weight: 750;
+    }
+
+    .order-detail-page .invoice-note {
+        margin-top: 24px;
+        padding: 22px;
+        border-radius: 22px;
+        background: #fff8fb;
+        border: 1px dashed #efc6d6;
+        color: #6f5d68;
+        line-height: 1.7;
+    }
+
+    .order-detail-page .invoice-note p {
+        margin-bottom: 8px;
+    }
+
+    .order-detail-page .invoice-note p:last-child {
+        margin-bottom: 0;
+    }
+
+    @media (max-width: 992px) {
+        .order-detail-page .detail-header,
+        .order-detail-page .invoice-top,
+        .order-detail-page .bill-summary-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .order-detail-page .invoice-code-box {
+            text-align: left;
+            min-width: unset;
+        }
+
+        .order-detail-page .top-info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .order-detail-page .status-row {
+            grid-template-columns: 1fr;
+        }
+
+        .order-detail-page .bill-summary-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .order-detail-page .bill-box {
+            border-right: none;
+            border-bottom: 1px solid #f5dbe5;
+        }
+
+        .order-detail-page .bill-box:nth-child(3),
+        .order-detail-page .bill-box:nth-child(4) {
+            border-bottom: none;
+        }
+
+        .order-detail-page .detail-header h2 {
+            font-size: 34px;
+        }
+
+        .order-detail-page .invoice-body,
+        .order-detail-page .invoice-top {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .order-detail-page .bill-summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .order-detail-page .bill-box:nth-child(3) {
+            border-bottom: 1px solid #f5dbe5;
+        }
+
+        .order-detail-page .info-line {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+    }
+
+    @media print {
+        body {
+            background: white !important;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .page-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+        }
+
+        .invoice-card-pro {
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+
+        .invoice-top {
+            background: white !important;
+        }
+
+        .bill-summary-header {
+            background: #f9c8da !important;
+            color: #2e202e !important;
+        }
+    }
+  </style>
 </head>
 
-<body class="app-bg">
+<body class="app-bg order-detail-page">
+
 <div class="page-container">
+
   <div class="page-top-actions no-print">
-    <a th:href="@{/orders}" class="btn btn-light btn-soft">← Về danh sách</a>
+    <a th:href="@{/orders}" class="btn btn-light btn-soft">
+      ← Về danh sách
+    </a>
   </div>
 
-  <section class="page-card no-print">
-    <div class="page-header">
-      <div>
-        <h2>Chi tiết đơn hàng</h2>
-        <p th:text="'Mã đơn: ' + ${order.orderCode}">Mã đơn</p>
-      </div>
+  <div class="detail-layout">
 
-      <div class="header-actions">
-        <button onclick="window.print()" class="btn btn-primary">In hóa đơn</button>
-      </div>
-    </div>
-
-    <form th:action="@{'/orders/status/' + ${order.id}}" method="post" class="status-form">
-      <label class="form-label">Trạng thái</label>
-      <div class="d-flex gap-2">
-        <select name="status" class="form-select">
-          <option value="CHỜ_XÁC_NHẬN" th:selected="${order.status == 'CHỜ_XÁC_NHẬN'}">Chờ xác nhận</option>
-          <option value="ĐANG_GIAO" th:selected="${order.status == 'ĐANG_GIAO'}">Đang giao</option>
-          <option value="HOÀN_THÀNH" th:selected="${order.status == 'HOÀN_THÀNH'}">Hoàn thành</option>
-          <option value="ĐÃ_GIAO" th:selected="${order.status == 'ĐÃ_GIAO'}">Đã giao</option>
-          <option value="ĐÃ_HỦY" th:selected="${order.status == 'ĐÃ_HỦY'}">Đã hủy</option>
-        </select>
-        <button class="btn btn-success">Lưu</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="invoice-card" id="printInvoice">
-    <div class="invoice-header">
-      <div class="invoice-brand">
-        <img th:if="${shopProfile.logoUrl != null and not #strings.isEmpty(shopProfile.logoUrl)}"
-             th:src="${shopProfile.logoUrl}"
-             alt="Logo"
-             class="invoice-logo">
+    <section class="page-card no-print detail-action-card">
+      <div class="detail-header">
         <div>
-          <h2 th:text="${shopProfile.shopName}">Tên cửa hàng</h2>
-          <p th:text="${shopProfile.slogan}">Slogan</p>
-          <p th:if="${shopProfile.phone != null and not #strings.isEmpty(shopProfile.phone)}">
-            SĐT: <span th:text="${shopProfile.phone}"></span>
-          </p>
-          <p th:if="${shopProfile.address != null and not #strings.isEmpty(shopProfile.address)}">
-            Địa chỉ: <span th:text="${shopProfile.address}"></span>
+          <h2>Chi tiết đơn hàng</h2>
+          <p>
+            Mã đơn:
+            <b th:text="${order.orderCode}">ORD</b>
           </p>
         </div>
-      </div>
-      <div class="invoice-code">
-        <span>HÓA ĐƠN</span>
-        <strong th:text="${order.orderCode}">ORD</strong>
-      </div>
-    </div>
 
-    <hr>
-
-    <div class="invoice-info">
-      <div>
-        <p><b>Khách hàng:</b> <span th:text="${order.customerName}">Tên khách</span></p>
-        <p><b>Số điện thoại:</b> <span th:text="${order.customerPhone}">SĐT</span></p>
-        <p><b>Địa chỉ:</b> <span th:text="${order.customerAddress}">Địa chỉ</span></p>
+        <div class="header-actions">
+          <button onclick="window.print()" class="btn btn-primary">
+            In hóa đơn
+          </button>
+        </div>
       </div>
 
-      <div>
-        <p><b>Trạng thái:</b> <span th:text="${order.status}">Status</span></p>
-        <p><b>Ngày tạo:</b> <span th:text="${order.createdAt}">Ngày</span></p>
+      <form th:action="@{'/orders/status/' + ${order.id}}" method="post" class="status-form">
+        <label class="form-label fw-bold">Trạng thái đơn hàng</label>
+
+        <div class="status-row">
+          <select name="status" class="form-select">
+            <option value="CHỜ_XÁC_NHẬN" th:selected="${order.status == 'CHỜ_XÁC_NHẬN'}">
+              Chờ xác nhận
+            </option>
+
+            <option value="ĐANG_GIAO" th:selected="${order.status == 'ĐANG_GIAO'}">
+              Đang giao
+            </option>
+
+            <option value="HOÀN_THÀNH" th:selected="${order.status == 'HOÀN_THÀNH'}">
+              Hoàn thành
+            </option>
+
+            <option value="ĐÃ_GIAO" th:selected="${order.status == 'ĐÃ_GIAO'}">
+              Đã giao
+            </option>
+
+            <option value="ĐÃ_HỦY" th:selected="${order.status == 'ĐÃ_HỦY'}">
+              Đã hủy
+            </option>
+          </select>
+
+          <button class="btn btn-success" type="submit">
+            Lưu
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="invoice-card-pro" id="printInvoice"
+             th:with="
+                    bill=${order.totalBill != null ? order.totalBill : (order.totalAmount != null ? order.totalAmount : 0)},
+                    total=${order.totalAmount != null ? order.totalAmount : bill},
+                    shipping=${order.shippingFee != null ? order.shippingFee : 0},
+                    deposit=${order.customerDeposit != null ? order.customerDeposit : 0},
+                    remaining=${order.remainingAmount != null ? order.remainingAmount : total},
+                    hasItems=${order.items != null and !#lists.isEmpty(order.items)}
+                 ">
+
+      <div class="invoice-top">
+        <div class="shop-brand-invoice">
+          <img th:if="${shopProfile != null
+                                and shopProfile.logoUrl != null
+                                and !#strings.isEmpty(shopProfile.logoUrl)}"
+               th:src="${shopProfile.logoUrl}"
+               alt="Logo"
+               class="invoice-logo">
+
+          <div class="invoice-logo-fallback"
+               th:if="${shopProfile == null
+                                or shopProfile.logoUrl == null
+                                or #strings.isEmpty(shopProfile.logoUrl)}">
+            SI
+          </div>
+
+          <div class="shop-info">
+            <h1 th:text="${shopProfile != null
+                                      and shopProfile.shopName != null
+                                      and !#strings.isEmpty(shopProfile.shopName)
+                                      ? shopProfile.shopName
+                                      : 'SmartInventory'}">
+              SmartInventory
+            </h1>
+
+            <p th:if="${shopProfile != null
+                                  and shopProfile.slogan != null
+                                  and !#strings.isEmpty(shopProfile.slogan)}"
+               th:text="${shopProfile.slogan}">
+              Slogan
+            </p>
+
+            <p th:if="${shopProfile != null
+                                  and shopProfile.phone != null
+                                  and !#strings.isEmpty(shopProfile.phone)}">
+              SĐT:
+              <span th:text="${shopProfile.phone}">096...</span>
+            </p>
+
+            <p th:if="${shopProfile != null
+                                  and shopProfile.address != null
+                                  and !#strings.isEmpty(shopProfile.address)}">
+              Địa chỉ:
+              <span th:text="${shopProfile.address}">Địa chỉ</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="invoice-code-box">
+          <span>HÓA ĐƠN BÁN HÀNG</span>
+          <h3 th:text="${order.orderCode}">ORD</h3>
+        </div>
       </div>
-    </div>
 
-    <table class="table invoice-table">
-      <thead>
-      <tr>
-        <th>STT</th>
-        <th>Sản phẩm</th>
-        <th>SL</th>
-        <th>Đơn giá</th>
-        <th>Thành tiền</th>
-      </tr>
-      </thead>
+      <div class="invoice-body">
 
-      <tbody>
-      <tr th:each="item, iter : ${order.items}">
-        <td th:text="${iter.index + 1}">1</td>
-        <td th:text="${item.product != null ? item.product.name : 'Sản phẩm đã ẩn'}">Sản phẩm</td>
-        <td th:text="${item.quantity}">1</td>
-        <td th:text="${#numbers.formatDecimal(item.displayUnitPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
-        <td th:text="${#numbers.formatDecimal(item.displaySubtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
-      </tr>
-      </tbody>
-    </table>
+        <div class="top-info-grid">
+          <div class="info-card">
+            <h4>Thông tin khách hàng</h4>
 
-    <div class="invoice-total">
-      <span>Tổng thanh toán:</span>
-      <strong th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</strong>
-    </div>
-    <div class="invoice-money-breakdown">
-      <p>
-        <span>Phí ship:</span>
-        <b th:text="${#numbers.formatDecimal(order.shippingFee, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
-      </p>
+            <div class="info-line">
+              <b>Khách hàng</b>
+              <span th:text="${order.customerName != null ? order.customerName : 'Chưa có tên'}">
+                                Khách hàng
+                            </span>
+            </div>
 
-      <p>
-        <span>Khách cọc:</span>
-        <b th:text="${#numbers.formatDecimal(order.customerDeposit, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
-      </p>
+            <div class="info-line">
+              <b>Số điện thoại</b>
+              <span th:text="${order.customerPhone != null and !#strings.isEmpty(order.customerPhone) ? order.customerPhone : 'Chưa có'}">
+                                SĐT
+                            </span>
+            </div>
 
-      <p>
-        <span>Còn phải thu:</span>
-        <b th:text="${#numbers.formatDecimal(order.remainingAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
-      </p>
-    </div>
-    <div class="invoice-footer">
-      <p th:text="${shopProfile.thankYouMessage}">Cảm ơn quý khách đã mua hàng!</p>
-      <p th:text="${shopProfile.invoiceFooter}">Hóa đơn được tạo tự động từ hệ thống SmartInventory.</p>
-    </div>
-  </section>
+            <div class="info-line">
+              <b>Địa chỉ</b>
+              <span th:text="${order.customerAddress != null and !#strings.isEmpty(order.customerAddress) ? order.customerAddress : 'Chưa có'}">
+                                Địa chỉ
+                            </span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h4>Thông tin đơn hàng</h4>
+
+            <div class="info-line">
+              <b>Trạng thái</b>
+              <span class="status-pill" th:text="${order.status != null ? order.status : 'CHƯA_CÓ'}">
+                                Status
+                            </span>
+            </div>
+
+            <div class="info-line">
+              <b>Ngày tạo</b>
+              <span th:if="${order.createdAt != null}"
+                    th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">
+                                Ngày
+                            </span>
+
+              <span th:if="${order.createdAt == null}">
+                                Chưa có
+                            </span>
+            </div>
+
+            <div class="info-line">
+              <b>Mã đơn</b>
+              <span th:text="${order.orderCode}">ORD</span>
+            </div>
+          </div>
+        </div>
+
+        <section class="bill-summary-card">
+          <div class="bill-summary-header">
+            <h4>Thông tin thanh toán</h4>
+            <span th:text="'Mã đơn: ' + ${order.orderCode}">Mã đơn</span>
+          </div>
+
+          <div class="bill-summary-grid">
+            <div class="bill-box">
+              <span>Tổng bill</span>
+              <strong th:text="${#numbers.formatDecimal(bill, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </strong>
+            </div>
+
+            <div class="bill-box">
+              <span>Phí ship</span>
+              <strong th:text="${#numbers.formatDecimal(shipping, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </strong>
+            </div>
+
+            <div class="bill-box">
+              <span>Khách cọc</span>
+              <strong th:text="${#numbers.formatDecimal(deposit, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </strong>
+            </div>
+
+            <div class="bill-box final">
+              <span>Còn phải thu</span>
+              <strong th:text="${#numbers.formatDecimal(remaining, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <h4 class="invoice-section-title">Sản phẩm trong đơn</h4>
+
+        <div class="invoice-table-wrap">
+          <table class="table invoice-table-pro">
+            <thead>
+            <tr>
+              <th style="width: 80px;">STT</th>
+              <th>Sản phẩm</th>
+              <th style="width: 100px;">SL</th>
+              <th style="width: 160px;">Đơn giá</th>
+              <th style="width: 180px;">Thành tiền</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr th:if="${!hasItems}">
+              <td colspan="5" class="text-center text-muted py-4">
+                Đơn hàng chưa có sản phẩm hoặc dữ liệu sản phẩm chưa được liên kết.
+              </td>
+            </tr>
+
+            <tr th:each="item, iter : ${order.items}"
+                th:with="
+                                lineQty=${item.quantity != null and item.quantity > 0 ? item.quantity : 1},
+                                singleItem=${hasItems and #lists.size(order.items) == 1},
+                                fallbackUnit=${singleItem and lineQty > 0 ? bill / lineQty : 0},
+                                displayUnit=${item.unitPrice != null and item.unitPrice > 0 ? item.unitPrice : fallbackUnit},
+                                displaySubtotal=${item.subtotal != null and item.subtotal > 0 ? item.subtotal : (singleItem ? bill : displayUnit * lineQty)}
+                            ">
+              <td th:text="${iter.index + 1}">1</td>
+
+              <td>
+                <div class="product-name-cell"
+                     th:text="${item.product != null ? item.product.name : 'Sản phẩm đã ẩn'}">
+                  Tên sản phẩm
+                </div>
+              </td>
+
+              <td th:text="${lineQty}">
+                1
+              </td>
+
+              <td class="money-cell"
+                  th:text="${#numbers.formatDecimal(displayUnit, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </td>
+
+              <td class="money-cell"
+                  th:text="${#numbers.formatDecimal(displaySubtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                0 đ
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="invoice-note">
+          <p th:text="${shopProfile != null
+                                and shopProfile.thankYouMessage != null
+                                and !#strings.isEmpty(shopProfile.thankYouMessage)
+                                ? shopProfile.thankYouMessage
+                                : 'Cảm ơn quý khách đã mua hàng!'}">
+            Cảm ơn quý khách đã mua hàng!
+          </p>
+
+          <p th:text="${shopProfile != null
+                                and shopProfile.invoiceFooter != null
+                                and !#strings.isEmpty(shopProfile.invoiceFooter)
+                                ? shopProfile.invoiceFooter
+                                : 'Hóa đơn được tạo tự động từ hệ thống SmartInventory.'}">
+            Hóa đơn được tạo tự động từ hệ thống SmartInventory.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
 </div>
+
 </body>
 </html>

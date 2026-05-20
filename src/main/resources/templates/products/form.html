@@ -4,112 +4,181 @@
     <meta charset="UTF-8">
     <title th:text="${pageTitle}">Sản phẩm</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body class="app-bg">
+
 <div class="page-container">
+
     <div class="page-top-actions">
-        <a class="btn btn-light btn-soft" th:href="@{/products}">← Về danh sách</a>
+        <a class="btn btn-light btn-soft" th:href="@{/products}">
+            ← Về danh sách sản phẩm
+        </a>
     </div>
 
     <section class="page-card">
-        <div class="page-header">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
             <div>
-                <h2 th:text="${pageTitle}">Sản phẩm</h2>
-                <p>Thông tin sản phẩm và tồn kho</p>
+                <h2 th:text="${pageTitle}">Thêm sản phẩm</h2>
+                <p class="text-muted mb-0">
+                    Nhập thông tin sản phẩm, tồn kho, giá bán và ảnh hiển thị trên trang bán hàng.
+                </p>
             </div>
+
+            <a class="btn btn-outline-primary" th:href="@{/shop}" target="_blank">
+                Xem cửa hàng
+            </a>
         </div>
 
         <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-        <form th:action="@{${formAction}}" th:object="${product}" method="post">
-            <div class="form-section-title">Thông tin cơ bản</div>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Mã sản phẩm</label>
-                    <input type="text" class="form-control" th:field="*{code}" maxlength="50" required>
-                    <div class="text-danger small" th:errors="*{code}"></div>
-                </div>
+        <form th:action="@{${formAction}}"
+              th:object="${product}"
+              method="post"
+              class="row g-3">
 
-                <div class="col-md-8">
-                    <label class="form-label">Tên sản phẩm</label>
-                    <input type="text" class="form-control" th:field="*{name}" required>
-                    <div class="text-danger small" th:errors="*{name}"></div>
-                </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Mã sản phẩm <span class="text-danger">*</span></label>
+                <input type="text"
+                       th:field="*{code}"
+                       class="form-control"
+                       placeholder="VD: SP001"
+                       required>
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('code')}" th:errors="*{code}"></div>
+            </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Danh mục</label>
-                    <input type="text" class="form-control" th:field="*{category}">
-                </div>
+            <div class="col-md-8">
+                <label class="form-label fw-bold">Tên sản phẩm <span class="text-danger">*</span></label>
+                <input type="text"
+                       th:field="*{name}"
+                       class="form-control"
+                       placeholder="VD: Son tint Romand"
+                       required>
+                <div class="text-danger small mt-1" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+            </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Thương hiệu</label>
-                    <input type="text" class="form-control" th:field="*{brand}">
-                </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Danh mục</label>
+                <input type="text"
+                       th:field="*{category}"
+                       class="form-control"
+                       placeholder="VD: Son môi, Kem chống nắng">
+            </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Nhà cung cấp</label>
-                    <select class="form-select" name="supplierId">
-                        <option value="">Chưa chọn</option>
-                        <option th:each="s : ${suppliers}"
-                                th:value="${s.id}"
-                                th:text="${s.name}"
-                                th:selected="${product.supplier != null and product.supplier.id == s.id}">
-                        </option>
-                    </select>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Thương hiệu</label>
+                <input type="text"
+                       th:field="*{brand}"
+                       class="form-control"
+                       placeholder="VD: Romand, Clio, Dasique">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Nhà cung cấp</label>
+                <select name="supplierId" class="form-select">
+                    <option value="">Chưa chọn</option>
+
+                    <option th:each="s : ${suppliers}"
+                            th:value="${s.id}"
+                            th:selected="${product.supplier != null and product.supplier.id == s.id}"
+                            th:text="${s.name}">
+                        Nhà cung cấp
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Tổng số lượng</label>
+                <input type="number"
+                       th:field="*{totalQuantity}"
+                       class="form-control"
+                       min="0"
+                       placeholder="VD: 100">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Số lượng tồn</label>
+                <input type="number"
+                       th:field="*{quantity}"
+                       class="form-control"
+                       min="0"
+                       placeholder="VD: 80">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Hạn sử dụng</label>
+                <input type="date"
+                       th:field="*{expiryDate}"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Giá nhập</label>
+                <input type="number"
+                       th:field="*{importPrice}"
+                       class="form-control"
+                       min="0"
+                       step="1000"
+                       placeholder="VD: 120000">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Giá bán</label>
+                <input type="number"
+                       th:field="*{salePrice}"
+                       class="form-control"
+                       min="0"
+                       step="1000"
+                       placeholder="VD: 180000">
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-bold">Ảnh sản phẩm trên trang bán hàng</label>
+                <input type="text"
+                       th:field="*{imageUrl}"
+                       class="form-control"
+                       placeholder="Dán link ảnh sản phẩm, ví dụ: https://.../image.jpg">
+                <div class="form-text">
+                    Nên dùng link ảnh trực tiếp kết thúc bằng .jpg, .png, .webp để hiển thị đẹp trên cửa hàng.
                 </div>
             </div>
 
-            <div class="form-section-title mt-4">Kho và giá</div>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Tổng số lượng</label>
-                    <input type="number" class="form-control" th:field="*{totalQuantity}" min="0" required>
-                    <div class="text-danger small" th:errors="*{totalQuantity}"></div>
-                </div>
+            <div class="col-12"
+                 th:if="${product.imageUrl != null and !#strings.isEmpty(product.imageUrl)}">
+                <div class="p-3 rounded-4 border bg-light">
+                    <div class="fw-bold mb-2">Xem trước ảnh sản phẩm</div>
 
-                <div class="col-md-3">
-                    <label class="form-label">Số lượng xuất</label>
-                    <input type="number" class="form-control" th:value="${product.soldQuantity}" disabled>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label">Tồn kho</label>
-                    <input type="number" class="form-control" th:value="${product.inventoryQuantity}" disabled>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label">Hạn sử dụng</label>
-                    <input type="date" class="form-control" th:field="*{expiryDate}">
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Đơn giá nhập</label>
-                    <input type="number" step="0.01" class="form-control" th:field="*{importPrice}" min="0">
-                    <div class="text-danger small" th:errors="*{importPrice}"></div>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Đơn giá bán</label>
-                    <input type="number" step="0.01" class="form-control" th:field="*{salePrice}" min="0">
-                    <div class="text-danger small" th:errors="*{salePrice}"></div>
+                    <img th:src="${product.imageUrl}"
+                         alt="Ảnh sản phẩm"
+                         style="max-width: 260px; width: 100%; height: 220px; object-fit: cover; border-radius: 18px; border: 1px solid #f1d4df;"
+                         onerror="this.style.display='none'">
                 </div>
             </div>
 
-            <div class="form-section-title mt-4">Ghi chú</div>
-            <div class="row g-3">
-                <div class="col-12">
-                    <textarea class="form-control" rows="4" th:field="*{description}"></textarea>
-                </div>
+            <div class="col-12">
+                <label class="form-label fw-bold">Mô tả sản phẩm</label>
+                <textarea th:field="*{description}"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Nhập mô tả ngắn về sản phẩm, công dụng, màu sắc, dung tích..."></textarea>
             </div>
 
-            <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Lưu sản phẩm</button>
-                <a class="btn btn-light btn-soft" th:href="@{/products}">Hủy</a>
+            <div class="col-12 d-flex gap-2 flex-wrap mt-3">
+                <button type="submit" class="btn btn-primary">
+                    Lưu sản phẩm
+                </button>
+
+                <a th:href="@{/products}" class="btn btn-light btn-soft">
+                    Hủy
+                </a>
             </div>
+
         </form>
     </section>
 </div>
+
 </body>
 </html>
