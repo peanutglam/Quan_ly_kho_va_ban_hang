@@ -17,12 +17,9 @@ public interface StockImportRepository extends JpaRepository<StockImport, Long> 
 
     long countByUser(AppUser user);
 
-    /*
-     * Tổng số lượng nhập theo từng sản phẩm.
-     * Dùng cho các phần thống kê tồn kho.
-     */
     @Query("""
-            SELECT si.product.id, COALESCE(SUM(si.quantity), 0)
+            SELECT si.product.id,
+                   COALESCE(SUM(si.quantity), 0)
             FROM StockImport si
             WHERE si.user = :user
               AND si.product IS NOT NULL
@@ -30,10 +27,6 @@ public interface StockImportRepository extends JpaRepository<StockImport, Long> 
             """)
     List<Object[]> findTotalImportedPerProduct(@Param("user") AppUser user);
 
-    /*
-     * Tổng tiền nhập trong khoảng ngày.
-     * Công thức: quantity * importPrice.
-     */
     @Query("""
             SELECT COALESCE(SUM(si.importPrice * si.quantity), 0)
             FROM StockImport si
@@ -47,9 +40,6 @@ public interface StockImportRepository extends JpaRepository<StockImport, Long> 
                                          @Param("start") LocalDateTime start,
                                          @Param("end") LocalDateTime end);
 
-    /*
-     * Tổng số lượng đã nhập trong khoảng ngày.
-     */
     @Query("""
             SELECT COALESCE(SUM(si.quantity), 0)
             FROM StockImport si
@@ -62,9 +52,6 @@ public interface StockImportRepository extends JpaRepository<StockImport, Long> 
                                  @Param("start") LocalDateTime start,
                                  @Param("end") LocalDateTime end);
 
-    /*
-     * Danh sách phiếu nhập trong khoảng ngày.
-     */
     @Query("""
             SELECT si
             FROM StockImport si
@@ -77,10 +64,6 @@ public interface StockImportRepository extends JpaRepository<StockImport, Long> 
                                              @Param("start") LocalDateTime start,
                                              @Param("end") LocalDateTime end);
 
-    /*
-     * Tối ưu DataOwnershipRepairRunner:
-     * bulk update trực tiếp trong DB, không load toàn bộ stock_imports lên RAM.
-     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE StockImport si

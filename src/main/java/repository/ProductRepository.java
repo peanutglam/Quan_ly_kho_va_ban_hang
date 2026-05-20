@@ -61,20 +61,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     List<Product> findAllByActiveTrueAndQuantityGreaterThanOrderByQuantityDescIdDesc(int minQty);
 
-    /*
-     * Dùng cho dashboard:
-     * lấy top sản phẩm sắp hết hàng thay vì load quá nhiều.
-     */
     List<Product> findTop20ByUserAndActiveTrueAndQuantityGreaterThanAndQuantityLessThanEqualOrderByQuantityAscIdDesc(
             AppUser user,
             Integer minQuantity,
             Integer maxQuantity
     );
 
-    /*
-     * Dùng cho dashboard:
-     * lấy top sản phẩm sắp hết hạn.
-     */
     List<Product> findTop20ByUserAndActiveTrueAndExpiryDateBetweenOrderByExpiryDateAscIdDesc(
             AppUser user,
             LocalDate from,
@@ -91,7 +83,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                     OR LOWER(p.brand) LIKE LOWER(CONCAT('%', :kw, '%'))
                     OR LOWER(p.category) LIKE LOWER(CONCAT('%', :kw, '%'))
                   )
-            ORDER BY p.quantity DESC, p.id DESC
+            ORDER BY
+              CASE WHEN p.quantity > 0 THEN 0 ELSE 1 END,
+              p.quantity DESC,
+              p.id DESC
             """)
     List<Product> searchByUserAndKeyword(@Param("user") AppUser user,
                                          @Param("kw") String kw);
@@ -110,9 +105,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<Product> searchPublicProducts(@Param("kw") String kw);
 
-    /*
-     * Lọc sản phẩm bằng SQL thay vì load toàn bộ rồi stream.
-     */
     @Query("""
             SELECT p FROM Product p
             WHERE p.user = :user
@@ -148,10 +140,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                       @Param("soonDate") LocalDate soonDate,
                                       Pageable pageable);
 
-    /*
-     * Tối ưu DataOwnershipRepairRunner:
-     * không load toàn bộ products lên RAM.
-     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Product p

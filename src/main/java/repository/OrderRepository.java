@@ -4,6 +4,7 @@ import entity.AppUser;
 import entity.Order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +19,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByUserOrderByIdDesc(AppUser user);
 
+    @EntityGraph(attributePaths = {"items", "items.product"})
     Optional<Order> findByIdAndUser(Long id, AppUser user);
 
     long countByUser(AppUser user);
@@ -47,10 +49,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                   @Param("status") String status,
                                   Pageable pageable);
 
-    /*
-     * Method đang được OrderService.totalRevenue() gọi.
-     * Chỉ tính doanh thu đơn đã giao / hoàn thành.
-     */
     @Query("""
             SELECT COALESCE(SUM(o.totalAmount), 0)
             FROM Order o
@@ -62,21 +60,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     BigDecimal sumRevenueByUser(@Param("user") AppUser user);
 
-    /*
-     * Bản tổng quát hơn nếu service cần truyền danh sách trạng thái.
-     */
     @Query("""
-            SELECT COALESCE(SUM(o.totalAmount), 0)
+            SELECT MONTH(o.createdAt), COALESCE(SUM(o.totalAmount), 0)
             FROM Order o
             WHERE o.user = :user
-              AND o.status IN :statuses
+              AND (
+                    o.status = 'ĐÃ_GIAO'
+                    OR o.status = 'HOÀN_THÀNH'
+                  )
+              AND o.createdAt IS NOT NULL
+            GROUP BY MONTH(o.createdAt)
+            ORDER BY MONTH(o.createdAt)
             """)
-    BigDecimal sumTotalAmountByUserAndStatuses(@Param("user") AppUser user,
-                                               @Param("statuses") List<String> statuses);
+    List<Object[]> revenueByMonth(@Param("user") AppUser user);
 
-    /*
-     * Đếm tổng đơn trong khoảng ngày.
-     */
     @Query("""
             SELECT COUNT(o)
             FROM Order o
@@ -88,9 +85,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                  @Param("start") LocalDateTime start,
                                  @Param("end") LocalDateTime end);
 
-    /*
-     * Đếm đơn theo trạng thái trong khoảng ngày.
-     */
     @Query("""
             SELECT COUNT(o)
             FROM Order o
@@ -104,10 +98,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                           @Param("start") LocalDateTime start,
                                           @Param("end") LocalDateTime end);
 
-    /*
-     * Tính doanh thu trong khoảng ngày.
-     * Chỉ tính đơn đã giao / hoàn thành.
-     */
     @Query("""
             SELECT COALESCE(SUM(o.totalAmount), 0)
             FROM Order o
@@ -123,11 +113,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                             @Param("start") LocalDateTime start,
                                             @Param("end") LocalDateTime end);
 
-    /*
-     * Lấy danh sách đơn trong khoảng ngày.
-     */
+    @EntityGraph(attributePaths = {"items", "items.product"})
     @Query("""
-            SELECT o
+            SELECT DISTINCT o
             FROM Order o
             WHERE o.user = :user
               AND o.createdAt >= :start
@@ -138,28 +126,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                        @Param("start") LocalDateTime start,
                                        @Param("end") LocalDateTime end);
 
-    /*
-     * Doanh thu theo tháng cho dashboard.
-     * Object[] = [monthNumber, totalAmount]
-     */
-    @Query("""
-            SELECT MONTH(o.createdAt), COALESCE(SUM(o.totalAmount), 0)
-            FROM Order o
-            WHERE o.user = :user
-              AND (
-                    o.status = 'ĐÃ_GIAO'
-                    OR o.status = 'HOÀN_THÀNH'
-                  )
-              AND o.createdAt IS NOT NULL
-            GROUP BY MONTH(o.createdAt)
-            ORDER BY MONTH(o.createdAt)
-            """)
-    List<Object[]> revenueByMonth(@Param("user") AppUser user);
-
-    /*
-     * Tối ưu DataOwnershipRepairRunner:
-     * bulk update trực tiếp trong DB, không load toàn bộ orders lên RAM.
-     */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Order o
