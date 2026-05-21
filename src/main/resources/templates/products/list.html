@@ -9,10 +9,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
-    /*
-     * Chỉ áp dụng cho trang sản phẩm.
-     * Mục tiêu: dễ nhìn hơn + scroll mượt hơn + giảm lag khi bảng nhiều cột.
-     */
     .product-list-page {
         --pink-main: #d85f91;
         --pink-dark: #9d3d66;
@@ -92,10 +88,6 @@
         border: 1px solid var(--pink-border);
         border-radius: 24px;
         background: #ffffff;
-
-        /*
-         * Tối ưu scroll.
-         */
         contain: content;
         overscroll-behavior: contain;
         scrollbar-gutter: stable;
@@ -294,10 +286,45 @@
         color: #ffffff;
     }
 
-    /*
-     * Giảm lag:
-     * Không dùng transition/transform trong bảng.
-     */
+    .product-list-page .delete-modal-content {
+        border-radius: 26px;
+        border: 1px solid var(--pink-border);
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgba(199, 87, 133, 0.22);
+    }
+
+    .product-list-page .delete-modal-header {
+        background: #fff3f8;
+        border-bottom: 1px solid var(--pink-border);
+        padding: 20px 22px;
+    }
+
+    .product-list-page .delete-modal-header h5 {
+        color: var(--pink-dark);
+        font-weight: 850;
+    }
+
+    .product-list-page .delete-modal-body {
+        padding: 22px;
+    }
+
+    .product-list-page .delete-warning-box {
+        border-radius: 18px;
+        border: 1px solid #f0c7d8;
+        background: #fff5f9;
+        color: #9d3d66;
+        padding: 16px;
+        font-weight: 700;
+        line-height: 1.6;
+        margin-bottom: 18px;
+    }
+
+    .product-list-page .delete-modal-footer {
+        border-top: 1px solid var(--pink-border);
+        padding: 16px 22px;
+        background: #fffafd;
+    }
+
     .product-list-page .product-table *,
     .product-list-page .product-table-shell * {
         transition: none !important;
@@ -370,11 +397,12 @@
           + Thêm sản phẩm
         </a>
 
-        <a class="btn btn-danger"
-           th:href="@{/products/delete-all}"
-           onclick="return confirm('Bạn có chắc muốn xóa toàn bộ sản phẩm? Hệ thống sẽ yêu cầu xác thực Owner nếu đã cấu hình.');">
+        <button type="button"
+                class="btn btn-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#deleteAllProductsModal">
           Xóa toàn bộ
-        </a>
+        </button>
       </div>
     </div>
 
@@ -640,6 +668,69 @@
 
   </section>
 </div>
+
+<div class="modal fade"
+     id="deleteAllProductsModal"
+     tabindex="-1"
+     aria-labelledby="deleteAllProductsModalLabel"
+     aria-hidden="true">
+
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content delete-modal-content">
+
+      <div class="modal-header delete-modal-header">
+        <h5 class="modal-title" id="deleteAllProductsModalLabel">
+          Xác nhận xóa toàn bộ sản phẩm
+        </h5>
+
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Đóng"></button>
+      </div>
+
+      <form th:action="@{/products/delete-all}" method="post">
+        <div class="modal-body delete-modal-body">
+
+          <div class="delete-warning-box">
+            Hành động này sẽ ẩn toàn bộ sản phẩm đang hoạt động trong kho.
+            Vui lòng nhập mật khẩu Owner để xác nhận trước khi xóa.
+          </div>
+
+          <label class="form-label fw-bold">
+            Mật khẩu Owner
+          </label>
+
+          <input type="password"
+                 name="ownerPassword"
+                 class="form-control"
+                 placeholder="Nhập mật khẩu Owner"
+                 required
+                 autocomplete="current-password">
+
+          <div class="form-text mt-2">
+            Chỉ tài khoản Owner mới được phép thực hiện thao tác này.
+          </div>
+        </div>
+
+        <div class="modal-footer delete-modal-footer">
+          <button type="button"
+                  class="btn btn-light btn-soft"
+                  data-bs-dismiss="modal">
+            Hủy
+          </button>
+
+          <button type="submit" class="btn btn-danger">
+            Xác nhận xóa toàn bộ
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
