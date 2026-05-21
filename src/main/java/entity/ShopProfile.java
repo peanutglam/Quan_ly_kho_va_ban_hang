@@ -18,6 +18,7 @@ public class ShopProfile {
 
     private String address;
 
+    @Column(columnDefinition = "TEXT")
     private String logoUrl;
 
     @Column(name = "hero_title")
@@ -60,7 +61,7 @@ public class ShopProfile {
     }
 
     public void setShopName(String shopName) {
-        this.shopName = trim(shopName);
+        this.shopName = clean(shopName);
     }
 
     public String getSlogan() {
@@ -68,7 +69,7 @@ public class ShopProfile {
     }
 
     public void setSlogan(String slogan) {
-        this.slogan = trim(slogan);
+        this.slogan = clean(slogan);
     }
 
     public String getPhone() {
@@ -76,7 +77,7 @@ public class ShopProfile {
     }
 
     public void setPhone(String phone) {
-        this.phone = trim(phone);
+        this.phone = clean(phone);
     }
 
     public String getAddress() {
@@ -84,7 +85,7 @@ public class ShopProfile {
     }
 
     public void setAddress(String address) {
-        this.address = trim(address);
+        this.address = clean(address);
     }
 
     public String getLogoUrl() {
@@ -92,7 +93,7 @@ public class ShopProfile {
     }
 
     public void setLogoUrl(String logoUrl) {
-        this.logoUrl = trim(logoUrl);
+        this.logoUrl = clean(logoUrl);
     }
 
     public String getHeroTitle() {
@@ -100,7 +101,7 @@ public class ShopProfile {
     }
 
     public void setHeroTitle(String heroTitle) {
-        this.heroTitle = trim(heroTitle);
+        this.heroTitle = clean(heroTitle);
     }
 
     public String getHeroSubtitle() {
@@ -108,7 +109,7 @@ public class ShopProfile {
     }
 
     public void setHeroSubtitle(String heroSubtitle) {
-        this.heroSubtitle = trim(heroSubtitle);
+        this.heroSubtitle = clean(heroSubtitle);
     }
 
     public String getBannerImageUrl() {
@@ -116,7 +117,7 @@ public class ShopProfile {
     }
 
     public void setBannerImageUrl(String bannerImageUrl) {
-        this.bannerImageUrl = trim(bannerImageUrl);
+        this.bannerImageUrl = clean(bannerImageUrl);
     }
 
     public String getThemeColor() {
@@ -124,7 +125,7 @@ public class ShopProfile {
     }
 
     public void setThemeColor(String themeColor) {
-        this.themeColor = trim(themeColor);
+        this.themeColor = clean(themeColor);
     }
 
     public String getFacebookUrl() {
@@ -132,7 +133,7 @@ public class ShopProfile {
     }
 
     public void setFacebookUrl(String facebookUrl) {
-        this.facebookUrl = trim(facebookUrl);
+        this.facebookUrl = clean(facebookUrl);
     }
 
     public String getZaloPhone() {
@@ -140,7 +141,7 @@ public class ShopProfile {
     }
 
     public void setZaloPhone(String zaloPhone) {
-        this.zaloPhone = trim(zaloPhone);
+        this.zaloPhone = clean(zaloPhone);
     }
 
     public String getShopNotice() {
@@ -148,7 +149,7 @@ public class ShopProfile {
     }
 
     public void setShopNotice(String shopNotice) {
-        this.shopNotice = trim(shopNotice);
+        this.shopNotice = clean(shopNotice);
     }
 
     public String getThankYouMessage() {
@@ -156,7 +157,7 @@ public class ShopProfile {
     }
 
     public void setThankYouMessage(String thankYouMessage) {
-        this.thankYouMessage = trim(thankYouMessage);
+        this.thankYouMessage = clean(thankYouMessage);
     }
 
     public String getInvoiceFooter() {
@@ -164,7 +165,7 @@ public class ShopProfile {
     }
 
     public void setInvoiceFooter(String invoiceFooter) {
-        this.invoiceFooter = trim(invoiceFooter);
+        this.invoiceFooter = clean(invoiceFooter);
     }
 
     public AppUser getUser() {
@@ -182,7 +183,7 @@ public class ShopProfile {
 
     @Transient
     public String getDisplaySlogan() {
-        return isBlank(slogan) ? "Mua sắm mỹ phẩm chính hãng, dễ dàng và nhanh chóng" : slogan;
+        return isBlank(slogan) ? "Mua sắm mỹ phẩm dễ dàng và nhanh chóng" : slogan;
     }
 
     @Transient
@@ -193,7 +194,7 @@ public class ShopProfile {
     @Transient
     public String getDisplayHeroSubtitle() {
         return isBlank(heroSubtitle)
-                ? "Khám phá các sản phẩm mỹ phẩm đang có sẵn tại cửa hàng."
+                ? "Khám phá các sản phẩm đang có sẵn tại cửa hàng."
                 : heroSubtitle;
     }
 
@@ -206,7 +207,7 @@ public class ShopProfile {
         return value == null || value.trim().isEmpty();
     }
 
-    private String trim(String value) {
+    private String clean(String value) {
         return value == null ? null : value.trim();
     }
 }
