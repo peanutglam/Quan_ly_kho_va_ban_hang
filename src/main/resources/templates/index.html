@@ -32,6 +32,15 @@
             <a th:href="@{/shop}" target="_blank">🛍️ Cửa hàng</a>
 
             <a th:if="${isOwner == true}" th:href="@{/shop-profile}">🏪 Cấu hình hóa đơn</a>
+            <a th:if="${isOwner == true
+           or (loginUser != null
+               and loginUser.role != null
+               and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
+                    or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
+                    or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
+               th:href="@{/shop-config}">
+                🛒 Cấu hình cửa hàng
+            </a>
             <a th:href="@{/sheet/flex-import}">📄 Import Google Sheet</a>
             <a th:if="${isOwner == true}" th:href="@{/account}">👥 Quản lý tài khoản</a>
             <a th:href="@{/account/change-password}">🔐 Đổi mật khẩu</a>

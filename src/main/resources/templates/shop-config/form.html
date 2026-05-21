@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Cấu hình cửa hàng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    .shop-config-page {
+        --pink-main: #dc6b98;
+        --pink-dark: #a63f6b;
+        --pink-soft: #fff3f8;
+        --pink-border: #f2c8d9;
+        --text-main: #2d2130;
+        --text-muted: #806b78;
+    }
+
+    .shop-config-page .config-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .shop-config-page .config-header h2 {
+        font-size: 42px;
+        font-weight: 850;
+        color: var(--text-main);
+        letter-spacing: -0.8px;
+        margin-bottom: 8px;
+    }
+
+    .shop-config-page .config-header p {
+        color: var(--text-muted);
+        margin-bottom: 0;
+        font-weight: 600;
+    }
+
+    .shop-config-page .config-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    .shop-config-page .config-section {
+        padding: 24px;
+        border-radius: 28px;
+        border: 1px solid var(--pink-border);
+        background: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .shop-config-page .config-section h5 {
+        font-size: 20px;
+        font-weight: 850;
+        color: var(--text-main);
+        margin-bottom: 18px;
+    }
+
+    .shop-config-page .form-label {
+        font-weight: 800;
+        color: #4a3544;
+    }
+
+    .shop-config-page .form-control,
+    .shop-config-page .form-select {
+        min-height: 50px;
+        border-radius: 16px;
+        border-color: #f1cddd;
+        box-shadow: none !important;
+    }
+
+    .shop-config-page textarea.form-control {
+        min-height: 110px;
+    }
+
+    .shop-config-page .form-control:focus,
+    .shop-config-page .form-select:focus {
+        border-color: var(--pink-main);
+    }
+
+    .shop-config-page .preview-card {
+        position: sticky;
+        top: 24px;
+        border-radius: 30px;
+        border: 1px solid var(--pink-border);
+        background: #ffffff;
+        overflow: hidden;
+        box-shadow: 0 18px 46px rgba(199, 87, 133, 0.12);
+    }
+
+    .shop-config-page .preview-hero {
+        min-height: 220px;
+        padding: 28px;
+        color: white;
+        background: linear-gradient(135deg, #dc6b98, #f6b7ce);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .shop-config-page .preview-hero h3 {
+        font-size: 34px;
+        font-weight: 850;
+        margin-bottom: 10px;
+        line-height: 1.15;
+    }
+
+    .shop-config-page .preview-hero p {
+        margin-bottom: 0;
+        font-weight: 600;
+        opacity: 0.95;
+        line-height: 1.6;
+    }
+
+    .shop-config-page .preview-body {
+        padding: 24px;
+    }
+
+    .shop-config-page .preview-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .shop-config-page .preview-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        object-fit: cover;
+        background: #fff0f6;
+        border: 1px solid #f0c6d7;
+    }
+
+    .shop-config-page .preview-logo-fallback {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        color: white;
+        font-weight: 850;
+        font-size: 22px;
+        background: linear-gradient(135deg, #dc6b98, #c84f80);
+    }
+
+    .shop-config-page .preview-brand h4 {
+        font-weight: 850;
+        color: var(--text-main);
+        margin-bottom: 3px;
+    }
+
+    .shop-config-page .preview-brand p {
+        color: var(--text-muted);
+        margin-bottom: 0;
+    }
+
+    .shop-config-page .preview-notice {
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: var(--pink-soft);
+        border: 1px solid var(--pink-border);
+        color: var(--pink-dark);
+        font-weight: 700;
+        margin-bottom: 18px;
+    }
+
+    .shop-config-page .preview-product {
+        padding: 16px;
+        border-radius: 22px;
+        background: #fffafd;
+        border: 1px solid #f3d8e2;
+    }
+
+    .shop-config-page .preview-product-img {
+        height: 130px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #fff0f6, #ffe3ef);
+        font-size: 44px;
+        margin-bottom: 12px;
+    }
+
+    .shop-config-page .preview-product h5 {
+        margin-bottom: 4px;
+        font-weight: 850;
+        color: var(--text-main);
+    }
+
+    .shop-config-page .preview-product p {
+        color: var(--text-muted);
+        margin-bottom: 10px;
+    }
+
+    .shop-config-page .preview-button {
+        border: none;
+        border-radius: 16px;
+        color: white;
+        font-weight: 850;
+        padding: 11px 16px;
+        width: 100%;
+        background: var(--pink-main);
+    }
+
+    @media (max-width: 1100px) {
+        .shop-config-page .config-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .shop-config-page .preview-card {
+            position: static;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .shop-config-page .config-header {
+            flex-direction: column;
+        }
+
+        .shop-config-page .config-header h2 {
+            font-size: 34px;
+        }
+    }
+  </style>
+</head>
+
+<body class="app-bg shop-config-page">
+
+<div class="page-container page-wide">
+
+  <div class="page-top-actions">
+    <a class="btn btn-light btn-soft" th:href="@{/dashboard}">
+      ← Về Dashboard
+    </a>
+
+    <a class="btn btn-outline-primary" th:href="@{/shop}" target="_blank">
+      Xem trang bán hàng
+    </a>
+  </div>
+
+  <section class="page-card">
+
+    <div class="config-header">
+      <div>
+        <h2>Cấu hình cửa hàng</h2>
+        <p>
+          Chỉnh thông tin hiển thị trên trang bán hàng công khai như tên shop, banner, màu chủ đạo, liên hệ và thông báo.
+        </p>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light btn-soft" th:href="@{/shop-profile}">
+          Cấu hình hóa đơn
+        </a>
+
+        <a class="btn btn-primary" th:href="@{/shop}" target="_blank">
+          Mở cửa hàng
+        </a>
+      </div>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="config-layout">
+
+      <form th:action="@{/shop-config}"
+            th:object="${profile}"
+            method="post">
+
+        <div class="config-section">
+          <h5>1. Thông tin cửa hàng</h5>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Tên cửa hàng</label>
+              <input type="text"
+                     th:field="*{shopName}"
+                     class="form-control"
+                     placeholder="VD: peanutglam">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Slogan</label>
+              <input type="text"
+                     th:field="*{slogan}"
+                     class="form-control"
+                     placeholder="VD: Mua sắm cùng peanut">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text"
+                     th:field="*{phone}"
+                     class="form-control"
+                     placeholder="VD: 0961716696">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Zalo / Hotline</label>
+              <input type="text"
+                     th:field="*{zaloPhone}"
+                     class="form-control"
+                     placeholder="VD: 0961716696">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Địa chỉ</label>
+              <input type="text"
+                     th:field="*{address}"
+                     class="form-control"
+                     placeholder="Nhập địa chỉ cửa hàng">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Logo URL</label>
+              <input type="text"
+                     th:field="*{logoUrl}"
+                     class="form-control"
+                     placeholder="Dán link logo cửa hàng">
+              <div class="form-text">
+                Nên dùng link ảnh trực tiếp dạng .jpg, .png hoặc .webp.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h5>2. Giao diện trang bán hàng</h5>
+
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Tiêu đề banner</label>
+              <input type="text"
+                     th:field="*{heroTitle}"
+                     class="form-control"
+                     placeholder="VD: Mỹ phẩm chính hãng, giá tốt mỗi ngày">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Màu chủ đạo</label>
+              <input type="color"
+                     th:field="*{themeColor}"
+                     class="form-control form-control-color"
+                     style="height: 50px; width: 100%;">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Mô tả banner</label>
+              <textarea th:field="*{heroSubtitle}"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Nhập mô tả ngắn cho trang bán hàng"></textarea>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Ảnh banner URL</label>
+              <input type="text"
+                     th:field="*{bannerImageUrl}"
+                     class="form-control"
+                     placeholder="Dán link ảnh banner cửa hàng">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Thông báo trên cửa hàng</label>
+              <textarea th:field="*{shopNotice}"
+                        class="form-control"
+                        rows="3"
+                        placeholder="VD: Freeship từ 500k, inbox shop để được tư vấn màu son..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h5>3. Liên kết và liên hệ</h5>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Facebook URL</label>
+              <input type="text"
+                     th:field="*{facebookUrl}"
+                     class="form-control"
+                     placeholder="VD: https://facebook.com/tenpage">
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn btn-primary">
+            Lưu cấu hình cửa hàng
+          </button>
+
+          <a th:href="@{/dashboard}" class="btn btn-light btn-soft">
+            Hủy
+          </a>
+        </div>
+
+      </form>
+
+      <aside class="preview-card">
+        <div class="preview-hero"
+             th:style="${profile.bannerImageUrl != null and !#strings.isEmpty(profile.bannerImageUrl)}
+                               ? 'background: linear-gradient(135deg, rgba(220,107,152,.88), rgba(246,183,206,.78)), url(' + ${profile.bannerImageUrl} + ') center/cover no-repeat;'
+                               : 'background: linear-gradient(135deg, ' + ${profile.displayThemeColor} + ', #f6b7ce);'">
+
+          <h3 th:text="${profile.displayHeroTitle}">
+            Cửa hàng mỹ phẩm
+          </h3>
+
+          <p th:text="${profile.displayHeroSubtitle}">
+            Khám phá các sản phẩm đang có sẵn tại cửa hàng.
+          </p>
+        </div>
+
+        <div class="preview-body">
+          <div class="preview-brand">
+            <img th:if="${profile.logoUrl != null and !#strings.isEmpty(profile.logoUrl)}"
+                 th:src="${profile.logoUrl}"
+                 class="preview-logo"
+                 alt="Logo"
+                 onerror="this.style.display='none'">
+
+            <div class="preview-logo-fallback"
+                 th:if="${profile.logoUrl == null or #strings.isEmpty(profile.logoUrl)}"
+                 th:style="'background:' + ${profile.displayThemeColor}">
+              SI
+            </div>
+
+            <div>
+              <h4 th:text="${profile.displayShopName}">
+                Tên cửa hàng
+              </h4>
+
+              <p th:text="${profile.displaySlogan}">
+                Slogan cửa hàng
+              </p>
+            </div>
+          </div>
+
+          <div class="preview-notice"
+               th:if="${profile.shopNotice != null and !#strings.isEmpty(profile.shopNotice)}"
+               th:text="${profile.shopNotice}">
+            Thông báo cửa hàng
+          </div>
+
+          <div class="preview-product">
+            <div class="preview-product-img">
+              🌸
+            </div>
+
+            <h5>Sản phẩm mẫu</h5>
+            <p>Hiển thị thử giao diện thẻ sản phẩm trên trang bán hàng.</p>
+
+            <button class="preview-button"
+                    th:style="'background:' + ${profile.displayThemeColor}">
+              Thêm vào giỏ hàng
+            </button>
+          </div>
+
+          <div class="mt-3 text-muted small">
+            <div th:if="${profile.phone != null and !#strings.isEmpty(profile.phone)}">
+              SĐT:
+              <b th:text="${profile.phone}">096...</b>
+            </div>
+
+            <div th:if="${profile.address != null and !#strings.isEmpty(profile.address)}">
+              Địa chỉ:
+              <b th:text="${profile.address}">Địa chỉ</b>
+            </div>
+
+            <div th:if="${profile.facebookUrl != null and !#strings.isEmpty(profile.facebookUrl)}">
+              Facebook:
+              <b th:text="${profile.facebookUrl}">Facebook</b>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </section>
+</div>
+
+</body>
+</html>

@@ -22,10 +22,6 @@ public class ShopProfileService {
         this.userRepository = userRepository;
     }
 
-    /*
-     * Dùng cho trang quản trị /shop-profile
-     * Cần đăng nhập để biết workspace owner hiện tại.
-     */
     @Transactional
     public ShopProfile getCurrentProfile() {
         AppUser owner = authService.getWorkspaceOwner();
@@ -34,16 +30,6 @@ public class ShopProfileService {
                 .orElseGet(() -> shopProfileRepository.save(createDefaultProfile(owner)));
     }
 
-    /*
-     * Dùng cho trang bán hàng công khai:
-     * /shop
-     * /shop/product/{id}
-     * /cart
-     * /checkout
-     *
-     * Không được gọi authService.getWorkspaceOwner()
-     * vì khách hàng xem shop không đăng nhập.
-     */
     @Transactional
     public ShopProfile getPublicProfile() {
         AppUser owner = userRepository
@@ -56,6 +42,42 @@ public class ShopProfileService {
 
         return shopProfileRepository.findByUser(owner)
                 .orElseGet(() -> shopProfileRepository.save(createDefaultProfile(owner)));
+    }
+
+    @Transactional
+    public void updateInvoiceConfig(ShopProfile form) {
+        ShopProfile profile = getCurrentProfile();
+
+        profile.setShopName(form.getShopName());
+        profile.setSlogan(form.getSlogan());
+        profile.setPhone(form.getPhone());
+        profile.setAddress(form.getAddress());
+        profile.setLogoUrl(form.getLogoUrl());
+        profile.setThankYouMessage(form.getThankYouMessage());
+        profile.setInvoiceFooter(form.getInvoiceFooter());
+
+        shopProfileRepository.save(profile);
+    }
+
+    @Transactional
+    public void updateShopConfig(ShopProfile form) {
+        ShopProfile profile = getCurrentProfile();
+
+        profile.setShopName(form.getShopName());
+        profile.setSlogan(form.getSlogan());
+        profile.setPhone(form.getPhone());
+        profile.setAddress(form.getAddress());
+        profile.setLogoUrl(form.getLogoUrl());
+
+        profile.setHeroTitle(form.getHeroTitle());
+        profile.setHeroSubtitle(form.getHeroSubtitle());
+        profile.setBannerImageUrl(form.getBannerImageUrl());
+        profile.setThemeColor(normalizeColor(form.getThemeColor()));
+        profile.setFacebookUrl(form.getFacebookUrl());
+        profile.setZaloPhone(form.getZaloPhone());
+        profile.setShopNotice(form.getShopNotice());
+
+        shopProfileRepository.save(profile);
     }
 
     @Transactional
@@ -106,15 +128,11 @@ public class ShopProfileService {
         return profile;
     }
 
-    /*
-     * Chỉ dùng làm object hiển thị tạm thời nếu hệ thống chưa có Owner.
-     * Không save object này vì ShopProfile yêu cầu user_id không được null.
-     */
     private ShopProfile createDefaultPublicProfile() {
         ShopProfile profile = new ShopProfile();
 
         profile.setShopName("SmartInventory Store");
-        profile.setSlogan("Mua sắm mỹ phẩm chính hãng, dễ dàng và nhanh chóng");
+        profile.setSlogan("Mua sắm mỹ phẩm dễ dàng và nhanh chóng");
         profile.setPhone("");
         profile.setAddress("");
         profile.setLogoUrl("");
