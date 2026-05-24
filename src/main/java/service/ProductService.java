@@ -185,6 +185,11 @@ public class ProductService {
         existing.setCategory(updatedProduct.getCategory());
         existing.setBrand(updatedProduct.getBrand());
         existing.setImageUrl(updatedProduct.getImageUrl());
+        existing.setPromotionEnabled(updatedProduct.getPromotionEnabled());
+        existing.setPromotionPercent(updatedProduct.getPromotionPercent());
+        existing.setPromotionPrice(updatedProduct.getPromotionPrice());
+        existing.setPromotionStartDate(updatedProduct.getPromotionStartDate());
+        existing.setPromotionEndDate(updatedProduct.getPromotionEndDate());
         existing.setTotalQuantity(updatedProduct.getTotalQuantity());
         existing.setImportPrice(updatedProduct.getImportPrice());
         existing.setSalePrice(updatedProduct.getSalePrice());

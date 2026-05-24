@@ -97,7 +97,8 @@ public class OrderService {
             if (pid == null || qty <= 0) continue;
 
             Product product = productService.getById(pid, ownerUser);
-            BigDecimal unitPrice = product.getSalePrice();
+            BigDecimal originalPrice = product.getSalePrice();
+            BigDecimal unitPrice = product.getEffectiveSalePrice();
             BigDecimal costPrice = product.getImportPrice();
             BigDecimal subtotal  = unitPrice.multiply(BigDecimal.valueOf(qty));
 
@@ -105,7 +106,7 @@ public class OrderService {
             item.setOrder(order);
             item.setProduct(product);
             item.setQuantity(qty);
-            item.setOriginalPrice(unitPrice);
+            item.setOriginalPrice(originalPrice);
             item.setUnitPrice(unitPrice);
             item.setCostPrice(costPrice);
             item.recalculate();
@@ -150,14 +151,15 @@ public class OrderService {
             if (product.getQuantity() < qty)
                 throw new IllegalArgumentException("Sản phẩm '" + product.getName() + "' chỉ còn " + product.getQuantity());
 
-            BigDecimal unitPrice = product.getSalePrice();
+            BigDecimal originalPrice = product.getSalePrice();
+            BigDecimal unitPrice = product.getEffectiveSalePrice();
             BigDecimal costPrice = product.getImportPrice();
 
             OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProduct(product);
             item.setQuantity(qty);
-            item.setOriginalPrice(unitPrice);
+            item.setOriginalPrice(originalPrice);
             item.setUnitPrice(unitPrice);
             item.setCostPrice(costPrice);
             item.recalculate();

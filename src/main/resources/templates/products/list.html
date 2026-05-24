@@ -519,6 +519,16 @@
                                 Có ảnh bán hàng
                             </span>
             </div>
+
+            <div class="mt-2" th:if="${p.promotionCurrentlyActive}">
+                <span class="badge rounded-pill" style="background:#e63972; color:#fff; border:1px solid #e63972;">
+                    Sale <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">0%</span>
+                </span>
+              <small class="text-muted ms-1">
+                Giá sale:
+                <b th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</b>
+              </small>
+            </div>
           </td>
 
           <td th:text="${p.category != null and !#strings.isEmpty(p.category) ? p.category : 'Chưa phân loại'}">

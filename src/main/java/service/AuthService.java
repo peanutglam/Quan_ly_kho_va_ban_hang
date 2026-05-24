@@ -81,6 +81,23 @@ public class AuthService {
     }
 
     @Transactional
+    public AppUser registerCustomer(AppUser user, String confirmPassword) {
+        validateCommonUserInfo(user);
+        validatePassword(user.getPassword(), confirmPassword);
+        validateUsernameUnique(user.getUsername());
+
+        AppUser owner = getCanonicalOwner();
+        owner = normalizeCanonicalOwner(owner);
+
+        user.setRole(AppUser.ROLE_CUSTOMER);
+        user.setOwner(owner);
+        user.setActive(true);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public AppUser login(String username, String password) {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
             throw new IllegalArgumentException("Vui lòng nhập đầy đủ tài khoản và mật khẩu");
@@ -120,16 +137,18 @@ public class AuthService {
                     || Boolean.FALSE.equals(user.getOwner().getActive())) {
 
                 user.setOwner(canonicalOwner);
-                userRepository.save(user);
+                user = userRepository.save(user);
             }
         }
 
         if (user.getPassword() != null && !user.getPassword().startsWith("$2")) {
             user.setPassword(passwordEncoder.encode(password));
-            userRepository.save(user);
+            user = userRepository.save(user);
         }
 
-        repairDataOwnership(canonicalOwner);
+        if (!AppUser.ROLE_CUSTOMER.equals(role)) {
+            repairDataOwnership(canonicalOwner);
+        }
 
         startAuthenticatedSession(user);
         return user;
@@ -404,7 +423,13 @@ public class AuthService {
 
         List<AppUser> users = new ArrayList<>();
         users.add(owner);
-        users.addAll(userRepository.findByOwnerOrderByIdDesc(owner));
+
+        for (AppUser user : userRepository.findByOwnerOrderByIdDesc(owner)) {
+            String role = normalizeRole(user.getRole());
+            if (AppUser.ROLE_STAFF.equals(role) || AppUser.ROLE_SALE.equals(role)) {
+                users.add(user);
+            }
+        }
 
         return users;
     }

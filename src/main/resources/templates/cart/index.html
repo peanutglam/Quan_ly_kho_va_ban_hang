@@ -72,7 +72,13 @@
                             </form>
                         </td>
 
-                        <td class="text-end" th:text="${#numbers.formatDecimal(item.unitPrice == null ? 0 : item.unitPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                        <td class="text-end">
+                            <div class="fw-bold" th:text="${#numbers.formatDecimal(item.unitPrice == null ? 0 : item.unitPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</div>
+                            <div class="small text-muted" th:if="${item.promotionActive}">
+                                <span style="text-decoration:line-through;" th:text="${#numbers.formatDecimal(item.originalPrice == null ? 0 : item.originalPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                                <span class="badge bg-danger ms-1">Sale</span>
+                            </div>
+                        </td>
                         <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(item.subtotal == null ? 0 : item.subtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
 
                         <td class="text-center">

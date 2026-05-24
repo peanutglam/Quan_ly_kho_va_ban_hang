@@ -40,17 +40,17 @@
                 <form th:action="@{/checkout}" method="post">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Họ tên <span class="text-danger">*</span></label>
-                        <input type="text" name="customerName" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
+                        <input type="text" name="customerName" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A" th:value="${checkoutName}">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Số điện thoại <span class="text-danger">*</span></label>
-                        <input type="tel" name="customerPhone" class="form-control" required placeholder="Ví dụ: 0912345678">
+                        <input type="tel" name="customerPhone" class="form-control" required placeholder="Ví dụ: 0912345678" th:value="${checkoutPhone}">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Địa chỉ giao hàng</label>
-                        <input type="text" name="customerAddress" class="form-control" placeholder="Số nhà, đường, phường/xã, tỉnh/thành">
+                        <input type="text" name="customerAddress" class="form-control" placeholder="Số nhà, đường, phường/xã, tỉnh/thành" th:value="${checkoutAddress}">
                     </div>
 
                     <div class="mb-4">
@@ -72,6 +72,10 @@
                         <div>
                             <div class="fw-bold" th:text="${item.productName}">Sản phẩm</div>
                             <small>Số lượng: <span th:text="${item.quantity}">1</span></small>
+                            <div class="small" th:if="${item.promotionActive}">
+                                <span class="badge bg-danger">Sale</span>
+                                <span style="text-decoration:line-through; opacity:.8" th:text="${#numbers.formatDecimal(item.originalPrice == null ? 0 : item.originalPrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                            </div>
                         </div>
                         <div class="fw-bold text-end" th:text="${#numbers.formatDecimal(item.subtotal == null ? 0 : item.subtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</div>
                     </div>
