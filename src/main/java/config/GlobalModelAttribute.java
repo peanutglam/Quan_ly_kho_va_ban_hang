@@ -46,23 +46,37 @@ public class GlobalModelAttribute {
     public boolean isEmployee() {
         try {
             AppUser currentUser = authService.getCurrentUser();
-            return currentUser != null && !isOwnerRole(currentUser.getRole());
+            return currentUser != null && !isOwnerRole(currentUser.getRole()) && !isCustomerRole(currentUser.getRole());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @ModelAttribute("isCustomer")
+    public boolean isCustomer() {
+        try {
+            AppUser currentUser = authService.getCurrentUser();
+            return currentUser != null && isCustomerRole(currentUser.getRole());
         } catch (Exception e) {
             return false;
         }
     }
 
     private boolean isOwnerRole(String role) {
+        String value = normalize(role);
+        return "OWNER".equals(value) || "ADMIN".equals(value);
+    }
+
+    private boolean isCustomerRole(String role) {
+        return "CUSTOMER".equals(normalize(role));
+    }
+
+    private String normalize(String role) {
         if (role == null || role.isBlank()) {
-            return false;
+            return "";
         }
 
         String value = role.trim().toUpperCase();
-
-        if (value.startsWith("ROLE_")) {
-            value = value.substring(5);
-        }
-
-        return "OWNER".equals(value) || "ADMIN".equals(value);
+        return value.startsWith("ROLE_") ? value.substring(5) : value;
     }
 }

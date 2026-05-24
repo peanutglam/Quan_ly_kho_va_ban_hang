@@ -1,5 +1,6 @@
 package controller;
 
+import entity.AppUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -24,9 +25,8 @@ public class AuthController {
         disableCache(response);
 
         HttpSession session = request.getSession(false);
-
         if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return "redirect:/dashboard";
+            return redirectAfterLogin();
         }
 
         return "auth/login";
@@ -41,10 +41,64 @@ public class AuthController {
 
         try {
             authService.login(username, password);
-            return "redirect:/dashboard";
+            return redirectAfterLogin();
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             return "auth/login";
+        }
+    }
+
+    @GetMapping("/customer/login")
+    public String customerLoginForm(HttpServletRequest request,
+                                    HttpServletResponse response) {
+        disableCache(response);
+
+        HttpSession session = request.getSession(false);
+        if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
+            return redirectAfterLogin();
+        }
+
+        return "auth/customer-login";
+    }
+
+    @PostMapping("/customer/login")
+    public String customerLogin(@RequestParam(required = false) String username,
+                                @RequestParam(required = false) String password,
+                                HttpServletResponse response,
+                                Model model) {
+        disableCache(response);
+
+        try {
+            authService.login(username, password);
+            return redirectAfterLogin();
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            return "auth/customer-login";
+        }
+    }
+
+    @GetMapping("/customer/register")
+    public String customerRegisterForm(Model model) {
+        if (!model.containsAttribute("user")) {
+            model.addAttribute("user", new AppUser());
+        }
+
+        return "auth/customer-register";
+    }
+
+    @PostMapping("/customer/register")
+    public String customerRegister(@ModelAttribute("user") AppUser user,
+                                   @RequestParam String confirmPassword,
+                                   Model model,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            authService.registerCustomer(user, confirmPassword);
+            redirectAttributes.addFlashAttribute("successMessage", "Đăng ký tài khoản mua hàng thành công. Bạn có thể đăng nhập ngay.");
+            return "redirect:/customer/login";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("user", user);
+            return "auth/customer-register";
         }
     }
 
@@ -52,20 +106,20 @@ public class AuthController {
     public String registerDisabled(RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute(
                 "errorMessage",
-                "Hệ thống không hỗ trợ đăng ký công khai. Tài khoản Owner được cấp sẵn khi triển khai ứng dụng."
+                "Hệ thống không hỗ trợ đăng ký Owner công khai. Khách mua hàng vui lòng dùng mục đăng ký tài khoản khách hàng."
         );
 
-        return "redirect:/login";
+        return "redirect:/customer/register";
     }
 
     @PostMapping("/register")
     public String registerPostDisabled(RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute(
                 "errorMessage",
-                "Hệ thống không hỗ trợ đăng ký công khai. Vui lòng đăng nhập bằng tài khoản được cấp."
+                "Không hỗ trợ đăng ký Owner công khai. Vui lòng đăng ký tài khoản khách hàng hoặc đăng nhập bằng tài khoản được cấp."
         );
 
-        return "redirect:/login";
+        return "redirect:/customer/register";
     }
 
     @GetMapping("/logout")
@@ -75,6 +129,27 @@ public class AuthController {
         disableCache(response);
 
         return "redirect:/shop";
+    }
+
+    private String redirectAfterLogin() {
+        try {
+            AppUser user = authService.getCurrentUser();
+            if (user != null && AppUser.ROLE_CUSTOMER.equalsIgnoreCase(normalizeRole(user.getRole()))) {
+                return "redirect:/shop";
+            }
+        } catch (Exception ignored) {
+        }
+
+        return "redirect:/dashboard";
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            return "";
+        }
+
+        String value = role.trim().toUpperCase();
+        return value.startsWith("ROLE_") ? value.substring(5) : value;
     }
 
     private void disableCache(HttpServletResponse response) {

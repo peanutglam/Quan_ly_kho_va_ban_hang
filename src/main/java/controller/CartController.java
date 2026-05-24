@@ -1,12 +1,14 @@
 package controller;
 
 import dto.CartItemDTO;
+import entity.AppUser;
 import entity.Order;
 import entity.Product;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import service.AuthService;
 import service.OrderService;
 import service.ProductService;
 import service.ShopProfileService;
@@ -15,10 +17,6 @@ import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
 import java.util.*;
 
-/**
- * Nhiệm vụ 2: Giỏ hàng và checkout công khai.
- * Cart lưu trong session (Map<productId, CartItemDTO>).
- */
 @Controller
 public class CartController {
 
@@ -27,15 +25,17 @@ public class CartController {
     private final ProductService productService;
     private final OrderService orderService;
     private final ShopProfileService shopProfileService;
+    private final AuthService authService;
 
-    public CartController(ProductService productService, OrderService orderService,
-                          ShopProfileService shopProfileService) {
+    public CartController(ProductService productService,
+                          OrderService orderService,
+                          ShopProfileService shopProfileService,
+                          AuthService authService) {
         this.productService = productService;
         this.orderService = orderService;
         this.shopProfileService = shopProfileService;
+        this.authService = authService;
     }
-
-    // ======================== CART ========================
 
     @GetMapping("/cart")
     public String viewCart(HttpSession session, Model model) {
@@ -43,6 +43,7 @@ public class CartController {
         BigDecimal total = cart.values().stream()
                 .map(CartItemDTO::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
         model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
@@ -55,10 +56,7 @@ public class CartController {
                             HttpSession session,
                             RedirectAttributes redirectAttrs) {
         try {
-            List<Product> publicProducts = productService.getPublicProducts(null);
-            Product product = publicProducts.stream()
-                    .filter(p -> productId.equals(p.getId())).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại"));
+            Product product = productService.getPublicProductById(productId);
 
             if (product.getQuantity() <= 0) {
                 redirectAttrs.addFlashAttribute("errorMessage", "Sản phẩm đã hết hàng");
@@ -69,18 +67,30 @@ public class CartController {
             CartItemDTO existing = cart.get(productId);
             int newQty = (existing == null ? 0 : existing.getQuantity()) + Math.max(1, quantity);
             int maxQty = product.getQuantity();
+
             if (newQty > maxQty) {
                 newQty = maxQty;
                 redirectAttrs.addFlashAttribute("warnMessage", "Chỉ còn " + maxQty + " sản phẩm trong kho");
             }
 
-            cart.put(productId, new CartItemDTO(productId, product.getCode(), product.getName(),
-                    product.getSalePrice(), newQty, maxQty));
+            cart.put(productId, new CartItemDTO(
+                    productId,
+                    product.getCode(),
+                    product.getName(),
+                    product.getSalePrice(),
+                    product.getEffectiveSalePrice(),
+                    product.isPromotionCurrentlyActive(),
+                    product.getDiscountPercentDisplay(),
+                    newQty,
+                    maxQty
+            ));
+
             session.setAttribute(CART_SESSION_KEY, cart);
             redirectAttrs.addFlashAttribute("successMessage", "Đã thêm vào giỏ hàng");
         } catch (Exception e) {
             redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
         }
+
         return "redirect:/cart";
     }
 
@@ -89,6 +99,7 @@ public class CartController {
                              @RequestParam int quantity,
                              HttpSession session) {
         Map<Long, CartItemDTO> cart = getCart(session);
+
         if (quantity <= 0) {
             cart.remove(productId);
         } else {
@@ -98,6 +109,7 @@ public class CartController {
                 item.setQuantity(Math.min(quantity, maxQty));
             }
         }
+
         session.setAttribute(CART_SESSION_KEY, cart);
         return "redirect:/cart";
     }
@@ -116,8 +128,6 @@ public class CartController {
         return "redirect:/cart";
     }
 
-    // ======================== CHECKOUT ========================
-
     @GetMapping("/checkout")
     public String checkoutForm(HttpSession session, Model model) {
         Map<Long, CartItemDTO> cart = getCart(session);
@@ -130,8 +140,15 @@ public class CartController {
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
         model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
+
+        AppUser currentCustomer = getCurrentCustomerSafely();
+        model.addAttribute("checkoutName", currentCustomer != null ? currentCustomer.getFullName() : "");
+        model.addAttribute("checkoutPhone", currentCustomer != null ? currentCustomer.getPhone() : "");
+        model.addAttribute("checkoutAddress", currentCustomer != null ? currentCustomer.getAddress() : "");
+
         return "cart/checkout";
     }
+
     @PostMapping("/checkout")
     public String placeOrder(@RequestParam String customerName,
                              @RequestParam String customerPhone,
@@ -147,8 +164,14 @@ public class CartController {
             for (CartItemDTO item : cart.values()) {
                 items.put(item.getProductId(), item.getQuantity());
             }
-            Order order = orderService.createPublicOrder(customerName, customerPhone,
-                    customerAddress == null ? "" : customerAddress, note, items);
+
+            Order order = orderService.createPublicOrder(
+                    customerName,
+                    customerPhone,
+                    customerAddress == null ? "" : customerAddress,
+                    note,
+                    items
+            );
 
             session.removeAttribute(CART_SESSION_KEY);
             return "redirect:/order-success?code=" + order.getOrderCode();
@@ -168,12 +191,31 @@ public class CartController {
         return "cart/success";
     }
 
+    private AppUser getCurrentCustomerSafely() {
+        try {
+            AppUser user = authService.getCurrentUser();
+            if (user != null && AppUser.ROLE_CUSTOMER.equalsIgnoreCase(normalizeRole(user.getRole()))) {
+                return user;
+            }
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) return "";
+        String value = role.trim().toUpperCase();
+        return value.startsWith("ROLE_") ? value.substring(5) : value;
+    }
+
     @SuppressWarnings("unchecked")
     private Map<Long, CartItemDTO> getCart(HttpSession session) {
         Object cart = session.getAttribute(CART_SESSION_KEY);
         if (cart instanceof Map<?, ?> m) {
             return (Map<Long, CartItemDTO>) m;
         }
+
         Map<Long, CartItemDTO> newCart = new LinkedHashMap<>();
         session.setAttribute(CART_SESSION_KEY, newCart);
         return newCart;

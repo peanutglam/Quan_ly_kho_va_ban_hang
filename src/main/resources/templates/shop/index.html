@@ -29,6 +29,18 @@
         </a>
 
         <div class="shop-actions">
+            <span class="shop-action-btn" th:if="${isCustomer == true}">
+                👋 <span th:text="${currentUser.fullName}">Khách hàng</span>
+            </span>
+
+            <a th:href="@{/customer/login}" class="shop-action-btn" th:if="${currentUser == null}">
+                👤 Đăng nhập
+            </a>
+
+            <a th:href="@{/logout}" class="shop-action-btn" th:if="${isCustomer == true}">
+                Đăng xuất
+            </a>
+
             <a th:href="@{/cart}" class="shop-action-btn">
                 🛒 Giỏ hàng
             </a>
@@ -154,10 +166,19 @@
                 Brand
             </div>
 
-            <div class="product-price"
-                 th:style="'color:' + ${mainColor}"
-                 th:text="${#numbers.formatDecimal(p.salePrice != null ? p.salePrice : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                0 đ
+            <div th:if="${p.promotionCurrentlyActive}" class="mt-2 mb-1">
+                <span class="badge rounded-pill" style="background:#e63972; color:white;">
+                    Sale <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">0%</span>
+                </span>
+            </div>
+
+            <div class="product-price" th:style="'color:' + ${mainColor}">
+                <span th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+            </div>
+
+            <div th:if="${p.promotionCurrentlyActive}" class="text-muted small mb-2">
+                <span style="text-decoration: line-through;"
+                      th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
             </div>
 
             <div class="stock-badge"

@@ -9,6 +9,7 @@ public class AppUser {
     public static final String ROLE_OWNER = "OWNER";
     public static final String ROLE_STAFF = "STAFF";
     public static final String ROLE_SALE = "SALE";
+    public static final String ROLE_CUSTOMER = "CUSTOMER";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -142,6 +143,7 @@ public class AppUser {
             case ROLE_OWNER -> "Owner / Chủ shop";
             case ROLE_STAFF -> "Nhân viên kho";
             case ROLE_SALE -> "Nhân viên bán hàng";
+            case ROLE_CUSTOMER -> "Khách hàng";
             default -> role;
         };
     }

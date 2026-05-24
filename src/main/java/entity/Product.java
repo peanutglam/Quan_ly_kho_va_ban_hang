@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 @Entity
@@ -34,6 +35,24 @@ public class Product {
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
+    /** Bật/tắt khuyến mãi cho sản phẩm này. */
+    @Column(name = "promotion_enabled", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean promotionEnabled = false;
+
+    /** % giảm giá. Ví dụ 15 = giảm 15%. */
+    @Column(name = "promotion_percent", precision = 5, scale = 2)
+    private BigDecimal promotionPercent = BigDecimal.ZERO;
+
+    /** Giá sale cố định. Nếu nhập > 0 thì ưu tiên giá này thay vì % giảm. */
+    @Column(name = "promotion_price", precision = 15, scale = 2)
+    private BigDecimal promotionPrice = BigDecimal.ZERO;
+
+    @Column(name = "promotion_start_date")
+    private LocalDate promotionStartDate;
+
+    @Column(name = "promotion_end_date")
+    private LocalDate promotionEndDate;
+
     /**
      * Tồn kho hiện tại = totalQuantity - soldQuantity
      */
@@ -41,23 +60,17 @@ public class Product {
     @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer quantity = 0;
 
-    /**
-     * Tổng số lượng đã nhập
-     */
+    /** Tổng số lượng đã nhập */
     @Min(value = 0, message = "Tổng số lượng không được âm")
     @Column(name = "total_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer totalQuantity = 0;
 
-    /**
-     * Tổng số lượng đã bán
-     */
+    /** Tổng số lượng đã bán */
     @Min(value = 0, message = "Số lượng xuất không được âm")
     @Column(name = "sold_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer soldQuantity = 0;
 
-    /**
-     * Tồn kho tính toán
-     */
+    /** Tồn kho tính toán */
     @Min(value = 0, message = "Tồn kho không được âm")
     @Column(name = "inventory_quantity", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer inventoryQuantity = 0;
@@ -66,6 +79,7 @@ public class Product {
     @Column(name = "import_price", precision = 15, scale = 2)
     private BigDecimal importPrice = BigDecimal.ZERO;
 
+    /** Giá bán gốc trước khi áp dụng sale. */
     @DecimalMin(value = "0.0", inclusive = true, message = "Giá bán không hợp lệ")
     @Column(name = "sale_price", precision = 15, scale = 2)
     private BigDecimal salePrice = BigDecimal.ZERO;
@@ -99,11 +113,7 @@ public class Product {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
-    /**
-     * Soft delete:
-     * true = đang hoạt động
-     * false = đã ẩn
-     */
+    /** Soft delete: true = đang hoạt động, false = đã ẩn. */
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean active = true;
 
@@ -139,226 +149,172 @@ public class Product {
         capital = ip.multiply(stockQty);
         profit = sp.subtract(ip).multiply(soldQty);
         profitStatus = profit.signum() >= 0 ? "Lãi" : "Lỗ";
+
+        promotionPercent = normalizePercent(promotionPercent);
+        promotionPrice = money(promotionPrice);
+        promotionEnabled = promotionEnabled != null && promotionEnabled;
     }
 
     public void increaseStock(int amount) {
-        if (amount <= 0) {
-            return;
-        }
-
+        if (amount <= 0) return;
         totalQuantity = nn(totalQuantity) + amount;
         recalculateInventoryFields();
     }
 
     public void registerSale(int amount) {
-        if (amount <= 0) {
-            return;
-        }
-
+        if (amount <= 0) return;
         soldQuantity = nn(soldQuantity) + amount;
         recalculateInventoryFields();
     }
 
     public void restoreSale(int amount) {
-        if (amount <= 0) {
-            return;
-        }
-
+        if (amount <= 0) return;
         soldQuantity = Math.max(nn(soldQuantity) - amount, 0);
         recalculateInventoryFields();
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
-    public String getCode() {
-        return code;
-    }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = trim(code); }
 
-    public void setCode(String code) {
-        this.code = trim(code);
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = trim(name); }
 
-    public String getName() {
-        return name;
-    }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = trim(category); }
 
-    public void setName(String name) {
-        this.name = trim(name);
-    }
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = trim(brand); }
 
-    public String getCategory() {
-        return category;
-    }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = trim(imageUrl); }
 
-    public void setCategory(String category) {
-        this.category = trim(category);
-    }
+    public Boolean getPromotionEnabled() { return promotionEnabled != null && promotionEnabled; }
+    public void setPromotionEnabled(Boolean promotionEnabled) { this.promotionEnabled = promotionEnabled != null && promotionEnabled; }
 
-    public String getBrand() {
-        return brand;
-    }
+    public BigDecimal getPromotionPercent() { return normalizePercent(promotionPercent); }
+    public void setPromotionPercent(BigDecimal promotionPercent) { this.promotionPercent = normalizePercent(promotionPercent); }
 
-    public void setBrand(String brand) {
-        this.brand = trim(brand);
-    }
+    public BigDecimal getPromotionPrice() { return money(promotionPrice); }
+    public void setPromotionPrice(BigDecimal promotionPrice) { this.promotionPrice = money(promotionPrice); }
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
+    public LocalDate getPromotionStartDate() { return promotionStartDate; }
+    public void setPromotionStartDate(LocalDate promotionStartDate) { this.promotionStartDate = promotionStartDate; }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = trim(imageUrl);
-    }
+    public LocalDate getPromotionEndDate() { return promotionEndDate; }
+    public void setPromotionEndDate(LocalDate promotionEndDate) { this.promotionEndDate = promotionEndDate; }
 
-    public Integer getQuantity() {
-        return nn(quantity);
-    }
+    public Integer getQuantity() { return nn(quantity); }
+    public void setQuantity(Integer quantity) { this.quantity = nn(quantity); }
 
-    public void setQuantity(Integer quantity) {
-        this.quantity = nn(quantity);
-    }
+    public Integer getTotalQuantity() { return nn(totalQuantity); }
+    public void setTotalQuantity(Integer totalQuantity) { this.totalQuantity = nn(totalQuantity); }
 
-    public Integer getTotalQuantity() {
-        return nn(totalQuantity);
-    }
+    public Integer getSoldQuantity() { return nn(soldQuantity); }
+    public void setSoldQuantity(Integer soldQuantity) { this.soldQuantity = nn(soldQuantity); }
 
-    public void setTotalQuantity(Integer totalQuantity) {
-        this.totalQuantity = nn(totalQuantity);
-    }
+    public Integer getInventoryQuantity() { return nn(inventoryQuantity); }
+    public void setInventoryQuantity(Integer inventoryQuantity) { this.inventoryQuantity = nn(inventoryQuantity); }
 
-    public Integer getSoldQuantity() {
-        return nn(soldQuantity);
-    }
+    public BigDecimal getImportPrice() { return money(importPrice); }
+    public void setImportPrice(BigDecimal importPrice) { this.importPrice = money(importPrice); }
 
-    public void setSoldQuantity(Integer soldQuantity) {
-        this.soldQuantity = nn(soldQuantity);
-    }
+    public BigDecimal getSalePrice() { return money(salePrice); }
+    public void setSalePrice(BigDecimal salePrice) { this.salePrice = money(salePrice); }
 
-    public Integer getInventoryQuantity() {
-        return nn(inventoryQuantity);
-    }
+    public LocalDate getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
 
-    public void setInventoryQuantity(Integer inventoryQuantity) {
-        this.inventoryQuantity = nn(inventoryQuantity);
-    }
+    public BigDecimal getTotalImportAmount() { return money(totalImportAmount); }
+    public void setTotalImportAmount(BigDecimal totalImportAmount) { this.totalImportAmount = money(totalImportAmount); }
 
-    public BigDecimal getImportPrice() {
-        return money(importPrice);
-    }
+    public BigDecimal getTotalSaleAmount() { return money(totalSaleAmount); }
+    public void setTotalSaleAmount(BigDecimal totalSaleAmount) { this.totalSaleAmount = money(totalSaleAmount); }
 
-    public void setImportPrice(BigDecimal importPrice) {
-        this.importPrice = money(importPrice);
-    }
+    public BigDecimal getCapital() { return money(capital); }
+    public void setCapital(BigDecimal capital) { this.capital = money(capital); }
 
-    public BigDecimal getSalePrice() {
-        return money(salePrice);
-    }
+    public BigDecimal getProfit() { return profit == null ? BigDecimal.ZERO : profit; }
+    public void setProfit(BigDecimal profit) { this.profit = profit == null ? BigDecimal.ZERO : profit; }
 
-    public void setSalePrice(BigDecimal salePrice) {
-        this.salePrice = money(salePrice);
-    }
+    public String getProfitStatus() { return profitStatus; }
+    public void setProfitStatus(String profitStatus) { this.profitStatus = trim(profitStatus); }
 
-    public LocalDate getExpiryDate() {
-        return expiryDate;
-    }
+    public Supplier getSupplier() { return supplier; }
+    public void setSupplier(Supplier supplier) { this.supplier = supplier; }
 
-    public void setExpiryDate(LocalDate expiryDate) {
-        this.expiryDate = expiryDate;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = trim(description); }
 
-    public BigDecimal getTotalImportAmount() {
-        return money(totalImportAmount);
-    }
+    public AppUser getUser() { return user; }
+    public void setUser(AppUser user) { this.user = user; }
 
-    public void setTotalImportAmount(BigDecimal totalImportAmount) {
-        this.totalImportAmount = money(totalImportAmount);
-    }
+    public Boolean getActive() { return active == null || active; }
+    public void setActive(Boolean active) { this.active = active == null || active; }
 
-    public BigDecimal getTotalSaleAmount() {
-        return money(totalSaleAmount);
-    }
+    @Transient
+    public boolean isInStock() { return getQuantity() > 0; }
 
-    public void setTotalSaleAmount(BigDecimal totalSaleAmount) {
-        this.totalSaleAmount = money(totalSaleAmount);
-    }
+    @Transient
+    public boolean hasImage() { return imageUrl != null && !imageUrl.trim().isEmpty(); }
 
-    public BigDecimal getCapital() {
-        return money(capital);
-    }
+    @Transient
+    public boolean isPromotionCurrentlyActive() {
+        if (!getPromotionEnabled()) return false;
+        if (getSalePrice().signum() <= 0) return false;
 
-    public void setCapital(BigDecimal capital) {
-        this.capital = money(capital);
-    }
+        LocalDate today = LocalDate.now();
+        if (promotionStartDate != null && today.isBefore(promotionStartDate)) return false;
+        if (promotionEndDate != null && today.isAfter(promotionEndDate)) return false;
 
-    public BigDecimal getProfit() {
-        return profit == null ? BigDecimal.ZERO : profit;
-    }
-
-    public void setProfit(BigDecimal profit) {
-        this.profit = profit == null ? BigDecimal.ZERO : profit;
-    }
-
-    public String getProfitStatus() {
-        return profitStatus;
-    }
-
-    public void setProfitStatus(String profitStatus) {
-        this.profitStatus = trim(profitStatus);
-    }
-
-    public Supplier getSupplier() {
-        return supplier;
-    }
-
-    public void setSupplier(Supplier supplier) {
-        this.supplier = supplier;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = trim(description);
-    }
-
-    public AppUser getUser() {
-        return user;
-    }
-
-    public void setUser(AppUser user) {
-        this.user = user;
-    }
-
-    public Boolean getActive() {
-        return active == null || active;
-    }
-
-    public void setActive(Boolean active) {
-        this.active = active == null || active;
+        return getPromotionPrice().signum() > 0 || getPromotionPercent().signum() > 0;
     }
 
     @Transient
-    public boolean isInStock() {
-        return getQuantity() > 0;
+    public BigDecimal getEffectiveSalePrice() {
+        BigDecimal base = getSalePrice();
+        if (!isPromotionCurrentlyActive()) return base;
+
+        BigDecimal promoPrice = getPromotionPrice();
+        if (promoPrice.signum() > 0 && promoPrice.compareTo(base) < 0) {
+            return promoPrice.setScale(0, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal percent = getPromotionPercent();
+        if (percent.signum() > 0) {
+            BigDecimal discountRate = BigDecimal.ONE.subtract(percent.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP));
+            BigDecimal result = base.multiply(discountRate).setScale(0, RoundingMode.HALF_UP);
+            return result.signum() < 0 ? BigDecimal.ZERO : result;
+        }
+
+        return base;
     }
 
     @Transient
-    public boolean hasImage() {
-        return imageUrl != null && !imageUrl.trim().isEmpty();
+    public BigDecimal getDiscountAmount() {
+        BigDecimal discount = getSalePrice().subtract(getEffectiveSalePrice());
+        return discount.signum() < 0 ? BigDecimal.ZERO : discount;
     }
 
-    private int nn(Integer value) {
-        return value == null || value < 0 ? 0 : value;
+    @Transient
+    public BigDecimal getDiscountPercentDisplay() {
+        BigDecimal base = getSalePrice();
+        if (base.signum() <= 0 || getDiscountAmount().signum() <= 0) return BigDecimal.ZERO;
+        return getDiscountAmount()
+                .multiply(BigDecimal.valueOf(100))
+                .divide(base, 0, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal money(BigDecimal value) {
-        return value == null || value.signum() < 0 ? BigDecimal.ZERO : value;
+    private int nn(Integer value) { return value == null || value < 0 ? 0 : value; }
+
+    private BigDecimal money(BigDecimal value) { return value == null || value.signum() < 0 ? BigDecimal.ZERO : value; }
+
+    private BigDecimal normalizePercent(BigDecimal value) {
+        if (value == null || value.signum() < 0) return BigDecimal.ZERO;
+        if (value.compareTo(BigDecimal.valueOf(100)) > 0) return BigDecimal.valueOf(100);
+        return value;
     }
 
-    private String trim(String value) {
-        return value == null ? null : value.trim();
-    }
+    private String trim(String value) { return value == null ? null : value.trim(); }
 }

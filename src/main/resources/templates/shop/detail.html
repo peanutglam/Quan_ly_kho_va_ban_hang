@@ -81,10 +81,20 @@
                     Brand
                 </p>
 
-                <div class="detail-price mb-3"
-                     th:style="'color:' + ${mainColor}"
-                     th:text="${#numbers.formatDecimal(product.salePrice != null ? product.salePrice : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                    0 đ
+                <div th:if="${product.promotionCurrentlyActive}" class="mb-2">
+                    <span class="badge rounded-pill" style="background:#e63972; color:white; padding:9px 14px;">
+                        Đang sale <span th:text="${#numbers.formatDecimal(product.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">0%</span>
+                    </span>
+                </div>
+
+                <div class="detail-price mb-1" th:style="'color:' + ${mainColor}">
+                    <span th:text="${#numbers.formatDecimal(product.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                </div>
+
+                <div th:if="${product.promotionCurrentlyActive}" class="text-muted mb-3 fs-5">
+                    Giá gốc:
+                    <span style="text-decoration: line-through;"
+                          th:text="${#numbers.formatDecimal(product.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
                 </div>
 
                 <div class="mb-4">

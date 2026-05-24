@@ -135,6 +135,52 @@
                        placeholder="VD: 180000">
             </div>
 
+            <div class="col-12 mt-2">
+                <div class="p-4 rounded-4" style="background:#fff8fb; border:1px solid #f1d4df;">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Cấu hình khuyến mãi / sale</h5>
+                            <p class="text-muted mb-0">Bật sale cho một số sản phẩm. Trang bán hàng và giỏ hàng sẽ tự dùng giá sau giảm.</p>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" th:field="*{promotionEnabled}" id="promotionEnabled">
+                            <label class="form-check-label fw-bold" for="promotionEnabled">Bật sale</label>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Giảm theo %</label>
+                            <input type="number" th:field="*{promotionPercent}" class="form-control" min="0" max="100" step="1" placeholder="VD: 15">
+                            <div class="form-text">Nếu nhập giá sale cố định thì hệ thống ưu tiên giá sale cố định.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Giá sale cố định</label>
+                            <input type="number" th:field="*{promotionPrice}" class="form-control" min="0" step="1000" placeholder="VD: 150000">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Ngày bắt đầu</label>
+                            <input type="date" th:field="*{promotionStartDate}" class="form-control">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Ngày kết thúc</label>
+                            <input type="date" th:field="*{promotionEndDate}" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mt-3" th:if="${product != null and product.promotionCurrentlyActive}">
+                        <span class="badge rounded-pill" style="background:#e63972; color:white; padding:8px 12px;">
+                            Đang sale - Giá hiển thị:
+                            <span th:text="${#numbers.formatDecimal(product.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12">
                 <label class="form-label fw-bold">Ảnh sản phẩm trên trang bán hàng</label>
                 <input type="text"
