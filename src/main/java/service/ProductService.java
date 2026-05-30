@@ -140,9 +140,7 @@ public class ProductService {
             throw new IllegalArgumentException("Sản phẩm không hợp lệ");
         }
 
-        return productRepository.findById(id)
-                .filter(product -> Boolean.TRUE.equals(product.getActive()))
-                .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
+        return productRepository.findByIdAndActiveTrueAndQuantityGreaterThan(id, 0)
                 .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại hoặc đã hết hàng"));
     }
 
@@ -357,6 +355,38 @@ public class ProductService {
         }
 
         return productRepository.searchPublicProducts(keyword.trim());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> getPublicProductsPage(String keyword,
+                                               String category,
+                                               boolean saleOnly,
+                                               int page,
+                                               int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 24 : Math.min(size, 48);
+
+        String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
+        String safeCategory = StringUtils.hasText(category) ? category.trim() : "";
+
+        return productRepository.searchPublicProductsPaged(
+                kw,
+                safeCategory,
+                saleOnly,
+                LocalDate.now(),
+                PageRequest.of(safePage, safeSize)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getPublicCategories() {
+        return productRepository.findPublicCategories();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getPublicSaleProducts(int limit) {
+        int safeLimit = limit <= 0 ? 8 : Math.min(limit, 16);
+        return productRepository.findActivePromotionProducts(LocalDate.now(), PageRequest.of(0, safeLimit));
     }
 
     @Transactional(readOnly = true)

@@ -21,6 +21,7 @@ public class Authinterceptor implements HandlerInterceptor {
             "/register",
             "/customer/login",
             "/customer/register",
+            "/api",
             "/css",
             "/js",
             "/images",

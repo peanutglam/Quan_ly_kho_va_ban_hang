@@ -77,7 +77,8 @@
                 </h1>
 
                 <p class="text-muted fs-5 mb-3"
-                   th:text="${product.brand != null and !#strings.isEmpty(product.brand) ? product.brand : 'Chưa xác định thương hiệu'}">
+                   th:if="${product.brand != null and !#strings.isEmpty(product.brand) and !#strings.equalsIgnoreCase(product.brand, 'Chưa xác định')}"
+                   th:text="${product.brand}">
                     Brand
                 </p>
 
@@ -111,7 +112,7 @@
 
                     <p class="mb-0 text-muted"
                        style="line-height: 1.8;"
-                       th:text="${product.description != null and !#strings.isEmpty(product.description) ? product.description : 'Sản phẩm hiện chưa có mô tả chi tiết.'}">
+                       th:text="${product.publicDescription}">
                         Mô tả sản phẩm
                     </p>
                 </div>

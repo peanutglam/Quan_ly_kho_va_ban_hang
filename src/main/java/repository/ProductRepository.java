@@ -41,6 +41,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByIdAndUserAndActiveTrue(Long id, AppUser user);
 
+    Optional<Product> findByIdAndActiveTrueAndQuantityGreaterThan(Long id, Integer quantity);
+
     Optional<Product> findFirstByNameContainingIgnoreCaseAndUserOrderByIdAsc(String name, AppUser user);
 
     Optional<Product> findFirstByNameContainingIgnoreCaseAndUserAndActiveTrueOrderByIdAsc(String name, AppUser user);
@@ -104,6 +106,66 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             ORDER BY p.quantity DESC, p.id DESC
             """)
     List<Product> searchPublicProducts(@Param("kw") String kw);
+
+    @Query("""
+            SELECT p FROM Product p
+            WHERE p.active = true
+              AND p.quantity > 0
+              AND (
+                    :kw = ''
+                    OR LOWER(p.name) LIKE LOWER(CONCAT('%', :kw, '%'))
+                    OR LOWER(p.code) LIKE LOWER(CONCAT('%', :kw, '%'))
+                    OR LOWER(p.brand) LIKE LOWER(CONCAT('%', :kw, '%'))
+                    OR LOWER(p.category) LIKE LOWER(CONCAT('%', :kw, '%'))
+                  )
+              AND (
+                    :category = ''
+                    OR LOWER(p.category) = LOWER(:category)
+                  )
+              AND (
+                    :saleOnly = false
+                    OR (
+                        p.promotionEnabled = true
+                        AND (:today IS NULL OR p.promotionStartDate IS NULL OR p.promotionStartDate <= :today)
+                        AND (:today IS NULL OR p.promotionEndDate IS NULL OR p.promotionEndDate >= :today)
+                        AND (
+                            (p.promotionPrice IS NOT NULL AND p.promotionPrice > 0 AND p.promotionPrice < p.salePrice)
+                            OR (p.promotionPercent IS NOT NULL AND p.promotionPercent > 0)
+                        )
+                    )
+                  )
+            ORDER BY p.quantity DESC, p.id DESC
+            """)
+    Page<Product> searchPublicProductsPaged(@Param("kw") String kw,
+                                            @Param("category") String category,
+                                            @Param("saleOnly") boolean saleOnly,
+                                            @Param("today") LocalDate today,
+                                            Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT p.category FROM Product p
+            WHERE p.active = true
+              AND p.quantity > 0
+              AND p.category IS NOT NULL
+              AND TRIM(p.category) <> ''
+            ORDER BY p.category ASC
+            """)
+    List<String> findPublicCategories();
+
+    @Query("""
+            SELECT p FROM Product p
+            WHERE p.active = true
+              AND p.quantity > 0
+              AND p.promotionEnabled = true
+              AND (:today IS NULL OR p.promotionStartDate IS NULL OR p.promotionStartDate <= :today)
+              AND (:today IS NULL OR p.promotionEndDate IS NULL OR p.promotionEndDate >= :today)
+              AND (
+                    (p.promotionPrice IS NOT NULL AND p.promotionPrice > 0 AND p.promotionPrice < p.salePrice)
+                    OR (p.promotionPercent IS NOT NULL AND p.promotionPercent > 0)
+                  )
+            ORDER BY p.id DESC
+            """)
+    List<Product> findActivePromotionProducts(@Param("today") LocalDate today, Pageable pageable);
 
     @Query("""
             SELECT p FROM Product p
