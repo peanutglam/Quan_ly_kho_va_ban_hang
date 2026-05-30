@@ -255,6 +255,20 @@ public class Product {
 
     @Transient
     public boolean hasImage() { return imageUrl != null && !imageUrl.trim().isEmpty(); }
+    @Transient
+    public String getPublicDescription() {
+        if (description == null || description.trim().isEmpty()) {
+            return "Sản phẩm hiện chưa có mô tả chi tiết.";
+        }
+
+        String lower = description.toLowerCase();
+        if (lower.contains("google sheet") || lower.contains("import linh hoạt")) {
+            return "Sản phẩm hiện chưa có mô tả chi tiết.";
+        }
+
+        return description.trim();
+    }
+
 
     @Transient
     public boolean isPromotionCurrentlyActive() {
