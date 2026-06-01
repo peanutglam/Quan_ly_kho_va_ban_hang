@@ -23,112 +23,119 @@
             font-weight: 700;
         }
 
-        .sale-section {
-            margin-bottom: 28px;
-        }
-
-        .sale-section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
-
-        .sale-section-header h2 {
-            margin: 0;
-            font-size: 30px;
-            font-weight: 850;
-            color: #2f2430;
-        }
-
-        .sale-strip {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 18px;
-        }
-
-        .sale-mini-card {
-            display: grid;
-            grid-template-columns: 96px 1fr;
-            gap: 14px;
-            align-items: center;
-            background: #fff;
-            border: 1px solid #f2c8d9;
-            border-radius: 22px;
-            padding: 14px;
-            box-shadow: 0 10px 26px rgba(199, 87, 133, 0.08);
-        }
-
-        .sale-mini-image {
-            width: 96px;
-            height: 96px;
-            border-radius: 18px;
-            overflow: hidden;
-            display: grid;
-            place-items: center;
-            background: linear-gradient(135deg, #fff0f6, #ffe3ef);
-            color: #c84f80;
-            font-size: 34px;
-        }
-
-        .sale-mini-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .sale-mini-card h3 {
-            font-size: 16px;
-            font-weight: 850;
-            color: #2f2430;
-            line-height: 1.35;
-            margin: 0 0 6px;
-        }
-
-        .sale-mini-card .sale-price {
-            font-size: 18px;
-            font-weight: 850;
-        }
-
         .shop-pagination {
-            margin-top: 28px;
+            margin-top: 34px;
+            margin-bottom: 26px;
             display: flex;
             justify-content: center;
+            align-items: center;
         }
 
-        .shop-pagination .page-link {
-            border-radius: 13px;
-            margin: 0 3px;
-            border-color: #f1cddd;
+        .shop-pagination-list {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px 14px;
+            margin: 0;
+            list-style: none;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid #f2c8d9;
+            box-shadow: 0 14px 34px rgba(199, 87, 133, 0.10);
+        }
+
+        .shop-page-btn {
+            min-width: 42px;
+            height: 42px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid #f1cddd;
+            background: #ffffff;
             color: #a63f6b;
-            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-weight: 850;
+            line-height: 1;
+            transition: 0.15s ease;
         }
 
-        .shop-pagination .active .page-link {
-            color: #fff;
-            border-color: transparent;
+        .shop-page-btn:hover {
+            background: #fff3f8;
+            color: #8e315a;
+            border-color: #e8a9c3;
+            transform: translateY(-1px);
         }
 
-        @media (max-width: 1200px) {
-            .sale-strip {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+        .shop-page-btn.active {
+            color: #ffffff !important;
+            border-color: transparent !important;
+            box-shadow: 0 10px 22px rgba(216, 95, 145, 0.24);
+        }
+
+        .shop-page-btn.disabled {
+            opacity: 0.45;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        .shop-page-btn.nav-btn {
+            min-width: auto;
+            padding-left: 18px;
+            padding-right: 18px;
+        }
+
+        .shop-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-weight: 850;
+            font-size: 14px;
+        }
+
+        .shop-reset-filter {
+            color: #a63f6b;
+            text-decoration: none;
+            font-weight: 850;
+            margin-left: 8px;
+        }
+
+        .shop-reset-filter:hover {
+            text-decoration: underline;
+        }
+
+        .sale-badge-custom {
+            background: #e63972;
+            color: #ffffff;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 13px;
+            font-weight: 850;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
         @media (max-width: 680px) {
-            .sale-strip {
-                grid-template-columns: 1fr;
+            .shop-pagination-list {
+                border-radius: 24px;
             }
 
-            .sale-mini-card {
-                grid-template-columns: 84px 1fr;
+            .shop-page-btn {
+                min-width: 38px;
+                height: 38px;
+                padding: 0 12px;
+                font-size: 14px;
             }
 
-            .sale-mini-image {
-                width: 84px;
-                height: 84px;
+            .shop-page-btn.nav-btn {
+                padding-left: 14px;
+                padding-right: 14px;
             }
         }
     </style>
@@ -198,8 +205,15 @@
         </div>
 
         <form th:action="@{/shop}" method="get" class="shop-search-form">
-            <input type="hidden" name="category" th:value="${selectedCategory}">
-            <input type="hidden" name="sale" th:value="${saleOnly}">
+            <input type="hidden"
+                   name="category"
+                   th:if="${selectedCategory != null and !#strings.isEmpty(selectedCategory)}"
+                   th:value="${selectedCategory}">
+
+            <input type="hidden"
+                   name="sale"
+                   th:if="${saleOnly == true}"
+                   value="true">
 
             <input type="text"
                    name="q"
@@ -225,13 +239,18 @@
 <main class="shop-container">
 
     <div class="category-list">
-        <a th:href="@{/shop(q=${keyword}, sale=${saleOnly})}"
+        <!-- FIX BUG:
+             Tất cả phải bỏ sale=true và bỏ category.
+             Chỉ giữ keyword nếu đang tìm kiếm.
+        -->
+        <a th:href="@{/shop(q=${keyword})}"
            class="category-chip"
-           th:classappend="${selectedCategory == null or #strings.isEmpty(selectedCategory)} ? 'active' : ''"
-           th:style="${selectedCategory == null or #strings.isEmpty(selectedCategory)} ? 'background:' + ${mainColor} + '; color:white;' : ''">
+           th:classappend="${(selectedCategory == null or #strings.isEmpty(selectedCategory)) and saleOnly != true} ? 'active' : ''"
+           th:style="${(selectedCategory == null or #strings.isEmpty(selectedCategory)) and saleOnly != true} ? 'background:' + ${mainColor} + '; color:white;' : ''">
             Tất cả
         </a>
 
+        <!-- Đang sale: chỉ thêm sale=true, không giữ category để tránh kẹt filter -->
         <a th:href="@{/shop(q=${keyword}, sale=true)}"
            class="category-chip"
            th:classappend="${saleOnly == true} ? 'active' : ''"
@@ -239,74 +258,44 @@
             🔥 Đang sale
         </a>
 
+        <!-- Category: khi chọn danh mục thì bỏ sale=true -->
         <a th:each="c : ${categories}"
-           th:href="@{/shop(q=${keyword}, category=${c}, sale=${saleOnly})}"
+           th:href="@{/shop(q=${keyword}, category=${c})}"
            class="category-chip"
-           th:classappend="${selectedCategory == c} ? 'active' : ''"
-           th:style="${selectedCategory == c} ? 'background:' + ${mainColor} + '; color:white;' : ''"
+           th:classappend="${saleOnly != true and selectedCategory == c} ? 'active' : ''"
+           th:style="${saleOnly != true and selectedCategory == c} ? 'background:' + ${mainColor} + '; color:white;' : ''"
            th:text="${c}">
             Mỹ phẩm
         </a>
     </div>
 
-    <section class="sale-section"
-             th:if="${saleOnly != true and saleProducts != null and !#lists.isEmpty(saleProducts)}">
-        <div class="sale-section-header">
-            <h2>Sản phẩm đang khuyến mãi</h2>
-
-            <a th:href="@{/shop(sale=true)}" class="btn btn-light btn-soft">
-                Xem tất cả sale
-            </a>
-        </div>
-
-        <div class="sale-strip">
-            <a th:each="p : ${saleProducts}"
-               th:href="@{/shop/product/{id}(id=${p.id})}"
-               class="sale-mini-card">
-
-                <div class="sale-mini-image">
-                    <img th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}"
-                         th:src="${p.imageUrl}"
-                         th:alt="${p.name}"
-                         onerror="this.style.display='none'">
-                    <span th:if="${p.imageUrl == null or #strings.isEmpty(p.imageUrl)}">🌸</span>
-                </div>
-
-                <div>
-                    <span class="badge rounded-pill mb-2" style="background:#e63972; color:white;">
-                        Sale <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">0%</span>
-                    </span>
-
-                    <h3 th:text="${p.name}">Tên sản phẩm</h3>
-
-                    <div class="sale-price"
-                         th:style="'color:' + ${mainColor}"
-                         th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                        0 đ
-                    </div>
-
-                    <div class="text-muted small">
-                        <span style="text-decoration: line-through;"
-                              th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                            0 đ
-                        </span>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </section>
-
     <div class="shop-filter-summary">
         <span>
-            Hiển thị
+            Mỗi trang hiển thị tối đa 20 sản phẩm. Đang hiển thị
             <b th:text="${products != null ? #lists.size(products) : 0}">0</b>
             /
             <b th:text="${totalElements != null ? totalElements : 0}">0</b>
             sản phẩm
         </span>
 
-        <span th:if="${saleOnly == true}" class="badge rounded-pill" style="background:#e63972; color:white;">
-            Đang lọc: Sản phẩm sale
+        <span th:if="${saleOnly == true}" class="shop-filter-chip" style="background:#e63972; color:white;">
+            🔥 Đang lọc: Sản phẩm sale
+            <a class="shop-reset-filter"
+               th:href="@{/shop(q=${keyword})}"
+               style="color:white;">
+                Bỏ lọc
+            </a>
+        </span>
+
+        <span th:if="${saleOnly != true and selectedCategory != null and !#strings.isEmpty(selectedCategory)}"
+              class="shop-filter-chip"
+              style="background:#fff3f8; color:#a63f6b; border:1px solid #f2c8d9;">
+            Danh mục:
+            <b th:text="${selectedCategory}">Mỹ phẩm</b>
+            <a class="shop-reset-filter"
+               th:href="@{/shop(q=${keyword})}">
+                Bỏ lọc
+            </a>
         </span>
     </div>
 
@@ -361,18 +350,25 @@
             </div>
 
             <div th:if="${p.promotionCurrentlyActive}" class="mt-2 mb-1">
-                <span class="badge rounded-pill" style="background:#e63972; color:white;">
-                    Sale <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">0%</span>
+                <span class="sale-badge-custom">
+                    Sale
+                    <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">
+                        0%
+                    </span>
                 </span>
             </div>
 
             <div class="product-price" th:style="'color:' + ${mainColor}">
-                <span th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                <span th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                    0 đ
+                </span>
             </div>
 
             <div th:if="${p.promotionCurrentlyActive}" class="text-muted small mb-2">
                 <span style="text-decoration: line-through;"
-                      th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
+                      th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                    0 đ
+                </span>
             </div>
 
             <div class="stock-badge"
@@ -406,36 +402,35 @@
         </div>
     </div>
 
+    <!-- FIX GIAO DIỆN PHÂN TRANG:
+         Không dùng ul/li để tránh lỗi hiện bullet dọc.
+    -->
     <div class="shop-pagination" th:if="${totalPages != null and totalPages > 1}">
-        <nav>
-            <ul class="pagination mb-0">
-                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                    <a class="page-link"
-                       th:href="@{/shop(page=${currentPage - 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
-                        Trước
-                    </a>
-                </li>
+        <div class="shop-pagination-list">
 
-                <li class="page-item"
-                    th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                    th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
-                    th:classappend="${i == currentPage} ? 'active'">
-                    <a class="page-link"
-                       th:style="${i == currentPage} ? 'background:' + ${mainColor} + '; border-color:' + ${mainColor} : ''"
-                       th:href="@{/shop(page=${i}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}"
-                       th:text="${i + 1}">
-                        1
-                    </a>
-                </li>
+            <a class="shop-page-btn nav-btn"
+               th:classappend="${currentPage == 0} ? ' disabled' : ''"
+               th:href="@{/shop(page=${currentPage - 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
+                Trước
+            </a>
 
-                <li class="page-item" th:classappend="${currentPage + 1 >= totalPages} ? 'disabled'">
-                    <a class="page-link"
-                       th:href="@{/shop(page=${currentPage + 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
-                        Sau
-                    </a>
-                </li>
-            </ul>
-        </nav>
+            <a class="shop-page-btn"
+               th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+               th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
+               th:classappend="${i == currentPage} ? ' active' : ''"
+               th:style="${i == currentPage} ? 'background:' + ${mainColor} + '; border-color:' + ${mainColor} : ''"
+               th:href="@{/shop(page=${i}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}"
+               th:text="${i + 1}">
+                1
+            </a>
+
+            <a class="shop-page-btn nav-btn"
+               th:classappend="${currentPage + 1 >= totalPages} ? ' disabled' : ''"
+               th:href="@{/shop(page=${currentPage + 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
+                Sau
+            </a>
+
+        </div>
     </div>
 
 </main>
