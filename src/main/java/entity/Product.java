@@ -275,14 +275,30 @@ public class Product {
 
     @Transient
     public boolean isPromotionCurrentlyActive() {
-        if (!getPromotionEnabled()) return false;
-        if (getSalePrice().signum() <= 0) return false;
+        if (!getPromotionEnabled()) {
+            return false;
+        }
+
+        BigDecimal base = getSalePrice();
+        if (base.signum() <= 0) {
+            return false;
+        }
 
         LocalDate today = LocalDate.now();
-        if (promotionStartDate != null && today.isBefore(promotionStartDate)) return false;
-        if (promotionEndDate != null && today.isAfter(promotionEndDate)) return false;
+        if (promotionStartDate != null && today.isBefore(promotionStartDate)) {
+            return false;
+        }
 
-        return getPromotionPrice().signum() > 0 || getPromotionPercent().signum() > 0;
+        if (promotionEndDate != null && today.isAfter(promotionEndDate)) {
+            return false;
+        }
+
+        BigDecimal promoPrice = getPromotionPrice();
+        if (promoPrice.signum() > 0 && promoPrice.compareTo(base) < 0) {
+            return true;
+        }
+
+        return getPromotionPercent().signum() > 0;
     }
 
     @Transient

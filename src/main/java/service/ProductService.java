@@ -364,7 +364,7 @@ public class ProductService {
                                                int page,
                                                int size) {
         int safePage = Math.max(page, 0);
-        int safeSize = size <= 0 ? 24 : Math.min(size, 48);
+        int safeSize = 20;
 
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
         String safeCategory = StringUtils.hasText(category) ? category.trim() : "";
@@ -385,7 +385,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<Product> getPublicSaleProducts(int limit) {
-        int safeLimit = limit <= 0 ? 8 : Math.min(limit, 16);
+        int safeLimit = limit <= 0 ? 4 : Math.min(limit, 8);
         return productRepository.findActivePromotionProducts(LocalDate.now(), PageRequest.of(0, safeLimit));
     }
 
