@@ -3,6 +3,7 @@ package dto;
 import java.math.BigDecimal;
 
 public class DashboardApiResponse {
+
     private long totalProducts;
     private long totalSuppliers;
     private long totalOrders;
@@ -12,31 +13,77 @@ public class DashboardApiResponse {
     private long shippingOrders;
     private long completedOrders;
     private long cancelledOrders;
+    private long lowStockCount;
+    private long expiringCount;
 
-    public long getTotalProducts() { return totalProducts; }
-    public void setTotalProducts(long totalProducts) { this.totalProducts = totalProducts; }
+    public DashboardApiResponse() {
+    }
 
-    public long getTotalSuppliers() { return totalSuppliers; }
-    public void setTotalSuppliers(long totalSuppliers) { this.totalSuppliers = totalSuppliers; }
+    public DashboardApiResponse(long totalProducts,
+                                long totalSuppliers,
+                                long totalOrders,
+                                long totalImports,
+                                BigDecimal totalRevenue,
+                                long pendingOrders,
+                                long shippingOrders,
+                                long completedOrders,
+                                long cancelledOrders,
+                                long lowStockCount,
+                                long expiringCount) {
+        this.totalProducts = totalProducts;
+        this.totalSuppliers = totalSuppliers;
+        this.totalOrders = totalOrders;
+        this.totalImports = totalImports;
+        this.totalRevenue = totalRevenue == null ? BigDecimal.ZERO : totalRevenue;
+        this.pendingOrders = pendingOrders;
+        this.shippingOrders = shippingOrders;
+        this.completedOrders = completedOrders;
+        this.cancelledOrders = cancelledOrders;
+        this.lowStockCount = lowStockCount;
+        this.expiringCount = expiringCount;
+    }
 
-    public long getTotalOrders() { return totalOrders; }
-    public void setTotalOrders(long totalOrders) { this.totalOrders = totalOrders; }
+    public long getTotalProducts() {
+        return totalProducts;
+    }
 
-    public long getTotalImports() { return totalImports; }
-    public void setTotalImports(long totalImports) { this.totalImports = totalImports; }
+    public long getTotalSuppliers() {
+        return totalSuppliers;
+    }
 
-    public BigDecimal getTotalRevenue() { return totalRevenue; }
-    public void setTotalRevenue(BigDecimal totalRevenue) { this.totalRevenue = totalRevenue; }
+    public long getTotalOrders() {
+        return totalOrders;
+    }
 
-    public long getPendingOrders() { return pendingOrders; }
-    public void setPendingOrders(long pendingOrders) { this.pendingOrders = pendingOrders; }
+    public long getTotalImports() {
+        return totalImports;
+    }
 
-    public long getShippingOrders() { return shippingOrders; }
-    public void setShippingOrders(long shippingOrders) { this.shippingOrders = shippingOrders; }
+    public BigDecimal getTotalRevenue() {
+        return totalRevenue;
+    }
 
-    public long getCompletedOrders() { return completedOrders; }
-    public void setCompletedOrders(long completedOrders) { this.completedOrders = completedOrders; }
+    public long getPendingOrders() {
+        return pendingOrders;
+    }
 
-    public long getCancelledOrders() { return cancelledOrders; }
-    public void setCancelledOrders(long cancelledOrders) { this.cancelledOrders = cancelledOrders; }
+    public long getShippingOrders() {
+        return shippingOrders;
+    }
+
+    public long getCompletedOrders() {
+        return completedOrders;
+    }
+
+    public long getCancelledOrders() {
+        return cancelledOrders;
+    }
+
+    public long getLowStockCount() {
+        return lowStockCount;
+    }
+
+    public long getExpiringCount() {
+        return expiringCount;
+    }
 }
