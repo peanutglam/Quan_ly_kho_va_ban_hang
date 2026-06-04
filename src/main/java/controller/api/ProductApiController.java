@@ -1,54 +1,78 @@
 package controller.api;
 
-import dto.ApiPageResponse;
 import dto.ProductApiResponse;
+import entity.AppUser;
 import entity.Product;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import service.AuthService;
 import service.ProductService;
 
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductApiController {
 
     private final ProductService productService;
+    private final AuthService authService;
 
-    public ProductApiController(ProductService productService) {
+    public ProductApiController(ProductService productService,
+                                AuthService authService) {
         this.productService = productService;
+        this.authService = authService;
     }
 
     @GetMapping
-    public ApiPageResponse<ProductApiResponse> products(@RequestParam(value = "q", required = false) String keyword,
-                                                        @RequestParam(value = "category", required = false) String category,
-                                                        @RequestParam(value = "sale", defaultValue = "false") boolean saleOnly,
-                                                        @RequestParam(value = "page", defaultValue = "0") int page,
-                                                        @RequestParam(value = "size", defaultValue = "24") int size) {
-        Page<Product> productPage = productService.getPublicProductsPage(keyword, category, saleOnly, page, size);
+    public ResponseEntity<?> listProducts(@RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "20") int size,
+                                          @RequestParam(required = false) String keyword) {
+        try {
+            AppUser currentUser = authService.getCurrentUser();
+            AppUser owner = authService.getWorkspaceOwner(currentUser);
 
-        List<ProductApiResponse> content = productPage.getContent()
-                .stream()
-                .map(ProductApiResponse::from)
-                .toList();
+            Page<Product> productPage = productService.filterProductsPage(
+                    owner,
+                    keyword,
+                    "",
+                    "",
+                    page,
+                    size
+            );
 
-        return ApiPageResponse.from(productPage, content);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("content", productPage.getContent().stream().map(ProductApiResponse::new).toList());
+            body.put("currentPage", productPage.getNumber());
+            body.put("totalPages", productPage.getTotalPages());
+            body.put("totalElements", productPage.getTotalElements());
+            body.put("size", productPage.getSize());
+
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(error(e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> detail(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok(ProductApiResponse.from(productService.getPublicProductById(id)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(java.util.Map.of("success", false, "message", e.getMessage()));
+            AppUser currentUser = authService.getCurrentUser();
+            AppUser owner = authService.getWorkspaceOwner(currentUser);
+
+            Product product = productService.getById(id, owner);
+
+            return ResponseEntity.ok(new ProductApiResponse(product));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(error(e.getMessage()));
         }
     }
 
-    @GetMapping("/categories")
-    public List<String> categories() {
-        return productService.getPublicCategories();
+    private Map<String, Object> error(String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", message == null || message.isBlank() ? "Có lỗi xảy ra" : message);
+        return body;
     }
 }

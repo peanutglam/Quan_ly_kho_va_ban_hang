@@ -1,8 +1,12 @@
 package dto;
 
 public class LoginApiRequest {
+
     private String username;
     private String password;
+
+    public LoginApiRequest() {
+    }
 
     public String getUsername() {
         return username;
