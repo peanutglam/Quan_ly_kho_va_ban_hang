@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "stock_imports")
@@ -46,7 +47,7 @@ public class StockImport {
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         }
         if (importCode == null || importCode.isBlank()) {
             importCode = "IMP-" + System.currentTimeMillis();

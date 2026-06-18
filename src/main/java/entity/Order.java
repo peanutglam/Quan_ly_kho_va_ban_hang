@@ -3,6 +3,7 @@ package entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +83,7 @@ public class Order {
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         }
 
         if (status == null || status.isBlank()) {

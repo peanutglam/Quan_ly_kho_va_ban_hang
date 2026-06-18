@@ -8,12 +8,15 @@ import service.AuthService;
 import service.OrderService;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
 public class ReportApiController {
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final OrderService orderService;
     private final AuthService authService;
@@ -33,7 +36,10 @@ public class ReportApiController {
         try {
             authService.getCurrentUser();
 
-            LocalDate reportDate = date == null ? LocalDate.now() : date;
+            LocalDate reportDate = date == null
+                    ? LocalDate.now(VIETNAM_ZONE)
+                    : date;
+
             DailyReportDTO report = orderService.getDailyReport(reportDate);
 
             return ResponseEntity.ok(report);
