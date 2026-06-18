@@ -455,6 +455,10 @@
         </div>
 
         <div class="header-actions">
+          <a class="btn btn-outline-primary" th:href="@{/orders/edit/{id}(id=${order.id})}">
+            Sửa đơn hàng
+          </a>
+
           <button onclick="window.print()" class="btn btn-primary">
             In hóa đơn
           </button>

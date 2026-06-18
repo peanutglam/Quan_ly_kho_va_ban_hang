@@ -25,6 +25,14 @@ public class OrderController {
     private final AuthService authService;
     private final ShopProfileService shopProfileService;
 
+    private static final List<String> ORDER_STATUSES = List.of(
+            OrderService.STATUS_PENDING,
+            OrderService.STATUS_SHIPPING,
+            OrderService.STATUS_COMPLETED,
+            OrderService.STATUS_DELIVERED,
+            OrderService.STATUS_CANCELLED
+    );
+
     public OrderController(OrderService orderService,
                            ProductService productService,
                            AuthService authService,
@@ -53,7 +61,6 @@ public class OrderController {
         model.addAttribute("totalPages", orderPage.getTotalPages());
         model.addAttribute("totalElements", orderPage.getTotalElements());
         model.addAttribute("grandTotal", grandTotal);
-
         model.addAttribute("keyword", keyword);
         model.addAttribute("status", status);
 
@@ -63,69 +70,96 @@ public class OrderController {
     @GetMapping("/create")
     public String showCreateOrder(Model model) {
         authService.requireRole("OWNER", "SALE");
-
-        AppUser owner = authService.getWorkspaceOwner();
-
-        model.addAttribute("products", productService.getAllProducts(null, owner));
-
+        prepareOrderForm(model, new Order(), false);
         return "orders/form";
     }
 
     @PostMapping("/create")
     public String createOrder(@RequestParam String customerName,
                               @RequestParam String customerPhone,
-                              @RequestParam String customerAddress,
+                              @RequestParam(value = "customerAddress", required = false) String customerAddress,
+                              @RequestParam(value = "status", required = false, defaultValue = OrderService.STATUS_PENDING) String status,
+                              @RequestParam(value = "shippingFee", required = false) String shippingFee,
+                              @RequestParam(value = "customerDeposit", required = false) String customerDeposit,
                               @RequestParam(value = "productIds", required = false) List<String> productIdStrs,
                               @RequestParam(value = "quantities", required = false) List<String> quantityStrs,
-                              Model model) {
+                              @RequestParam(value = "unitPrices", required = false) List<String> unitPriceStrs,
+                              Model model,
+                              RedirectAttributes redirectAttrs) {
         authService.requireRole("OWNER", "SALE");
 
-        AppUser owner = authService.getWorkspaceOwner();
+        try {
+            Order created = orderService.createOrderDetailed(
+                    customerName,
+                    customerPhone,
+                    customerAddress,
+                    status,
+                    parseMoney(shippingFee),
+                    parseMoney(customerDeposit),
+                    parseProductIds(productIdStrs),
+                    parseQuantities(quantityStrs),
+                    parseUnitPrices(unitPriceStrs)
+            );
 
-        List<Long> productIds = new ArrayList<>();
-        List<Integer> quantities = new ArrayList<>();
+            redirectAttrs.addFlashAttribute("successMessage", "Đã tạo đơn hàng " + created.getOrderCode() + ".");
+            return "redirect:/orders";
+        } catch (Exception e) {
+            Order order = new Order();
+            order.setCustomerName(customerName);
+            order.setCustomerPhone(customerPhone);
+            order.setCustomerAddress(customerAddress);
+            order.setStatus(status);
+            order.setShippingFee(parseMoney(shippingFee));
+            order.setCustomerDeposit(parseMoney(customerDeposit));
 
-        if (productIdStrs != null) {
-            for (int i = 0; i < productIdStrs.size(); i++) {
-                String pid = productIdStrs.get(i);
-
-                if (pid == null || pid.isBlank()) {
-                    continue;
-                }
-
-                try {
-                    long id = Long.parseLong(pid.trim());
-
-                    int qty = 1;
-
-                    if (quantityStrs != null && i < quantityStrs.size()) {
-                        try {
-                            qty = Integer.parseInt(quantityStrs.get(i).trim());
-                        } catch (Exception ignored) {
-                            qty = 1;
-                        }
-                    }
-
-                    if (qty > 0) {
-                        productIds.add(id);
-                        quantities.add(qty);
-                    }
-                } catch (NumberFormatException ignored) {
-                }
-            }
-        }
-
-        if (productIds.isEmpty()) {
-            model.addAttribute("products", productService.getAllProducts(null, owner));
-            model.addAttribute("errorMessage", "Vui lòng chọn ít nhất một sản phẩm.");
+            prepareOrderForm(model, order, false);
+            model.addAttribute("errorMessage", e.getMessage());
             return "orders/form";
         }
+    }
+
+    @GetMapping("/edit/{id}")
+    public String showEditOrder(@PathVariable Long id, Model model) {
+        authService.requireRole("OWNER", "SALE");
+        Order order = orderService.getById(id);
+        prepareOrderForm(model, order, true);
+        return "orders/form";
+    }
+
+    @PostMapping("/edit/{id}")
+    public String updateOrder(@PathVariable Long id,
+                              @RequestParam String customerName,
+                              @RequestParam String customerPhone,
+                              @RequestParam(value = "customerAddress", required = false) String customerAddress,
+                              @RequestParam(value = "status", required = false, defaultValue = OrderService.STATUS_PENDING) String status,
+                              @RequestParam(value = "shippingFee", required = false) String shippingFee,
+                              @RequestParam(value = "customerDeposit", required = false) String customerDeposit,
+                              @RequestParam(value = "productIds", required = false) List<String> productIdStrs,
+                              @RequestParam(value = "quantities", required = false) List<String> quantityStrs,
+                              @RequestParam(value = "unitPrices", required = false) List<String> unitPriceStrs,
+                              Model model,
+                              RedirectAttributes redirectAttrs) {
+        authService.requireRole("OWNER", "SALE");
 
         try {
-            orderService.createOrder(customerName, customerPhone, customerAddress, productIds, quantities);
-            return "redirect:/orders";
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("products", productService.getAllProducts(null, owner));
+            orderService.updateOrderInfo(
+                    id,
+                    customerName,
+                    customerPhone,
+                    customerAddress,
+                    status,
+                    parseMoney(shippingFee),
+                    parseMoney(customerDeposit),
+                    parseProductIds(productIdStrs),
+                    parseQuantities(quantityStrs),
+                    parseUnitPrices(unitPriceStrs)
+            );
+
+            redirectAttrs.addFlashAttribute("successMessage", "Đã cập nhật đơn hàng.");
+            return "redirect:/orders/detail/" + id;
+        } catch (Exception e) {
+            Order order = orderService.getById(id);
+            prepareOrderForm(model, order, true);
             model.addAttribute("errorMessage", e.getMessage());
             return "orders/form";
         }
@@ -135,7 +169,6 @@ public class OrderController {
     public String orderDetail(@PathVariable Long id, Model model) {
         model.addAttribute("order", orderService.getById(id));
         model.addAttribute("shopProfile", shopProfileService.getCurrentProfile());
-
         return "orders/detail";
     }
 
@@ -198,5 +231,88 @@ public class OrderController {
         }
 
         return "redirect:/orders";
+    }
+
+    private void prepareOrderForm(Model model, Order order, boolean editMode) {
+        AppUser owner = authService.getWorkspaceOwner();
+        model.addAttribute("order", order);
+        model.addAttribute("products", productService.getAllProducts(null, owner));
+        model.addAttribute("statuses", ORDER_STATUSES);
+        model.addAttribute("editMode", editMode);
+        model.addAttribute("formTitle", editMode ? "Chỉnh sửa đơn hàng" : "Tạo đơn hàng online");
+        model.addAttribute("formSubtitle", editMode
+                ? "Cập nhật thông tin khách hàng, sản phẩm, số lượng, giá bán và trạng thái đơn."
+                : "Chọn sản phẩm, nhập số lượng tùy ý, hệ thống tự tính tổng tiền và cập nhật tồn kho.");
+    }
+
+    private List<Long> parseProductIds(List<String> values) {
+        List<Long> result = new ArrayList<>();
+        if (values == null) return result;
+
+        for (String value : values) {
+            if (value == null || value.isBlank()) {
+                result.add(null);
+                continue;
+            }
+
+            try {
+                result.add(Long.parseLong(value.trim()));
+            } catch (Exception e) {
+                result.add(null);
+            }
+        }
+
+        return result;
+    }
+
+    private List<Integer> parseQuantities(List<String> values) {
+        List<Integer> result = new ArrayList<>();
+        if (values == null) return result;
+
+        for (String value : values) {
+            try {
+                result.add(Integer.parseInt(value == null ? "0" : value.trim()));
+            } catch (Exception e) {
+                result.add(0);
+            }
+        }
+
+        return result;
+    }
+
+    private List<BigDecimal> parseUnitPrices(List<String> values) {
+        List<BigDecimal> result = new ArrayList<>();
+        if (values == null) return result;
+
+        for (String value : values) {
+            result.add(parseMoney(value));
+        }
+
+        return result;
+    }
+
+    private BigDecimal parseMoney(String value) {
+        if (value == null || value.isBlank()) return BigDecimal.ZERO;
+
+        try {
+            String clean = value.trim()
+                    .replace("đ", "")
+                    .replace(" ", "")
+                    .replace(",", "");
+
+            if (clean.isBlank()) return BigDecimal.ZERO;
+
+            // Giữ đúng số thập phân kiểu 430000.00, nhưng vẫn hỗ trợ người dùng nhập 430.000
+            if (clean.matches("\\d+\\.\\d{1,2}")) {
+                return new BigDecimal(clean);
+            }
+
+            clean = clean.replace(".", "");
+            if (clean.isBlank()) return BigDecimal.ZERO;
+
+            return new BigDecimal(clean);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
     }
 }
