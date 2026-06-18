@@ -2,79 +2,303 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <title>Tạo đơn hàng</title>
+  <title th:text="${formTitle != null ? formTitle : 'Tạo đơn hàng'}">Tạo đơn hàng</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" th:href="@{/css/style.css}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    .order-form-page .order-form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .order-form-page .product-line {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 120px 170px 170px 52px;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid #f2d3df;
+      border-radius: 20px;
+      background: #fffafd;
+      margin-bottom: 12px;
+    }
+
+    .order-form-page .line-total {
+      font-weight: 800;
+      color: #c84f80;
+      background: #fff5f9;
+    }
+
+    .order-form-page .line-stock-hint {
+      display: block;
+      margin-top: 5px;
+      color: #9a7587;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .order-form-page .money-box {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .order-form-page .summary-strip strong {
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .order-form-page .product-line {
+        grid-template-columns: 1fr 100px 150px;
+      }
+
+      .order-form-page .product-line .line-total-wrap,
+      .order-form-page .product-line .remove-line-wrap {
+        grid-column: span 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .order-form-page .order-form-grid,
+      .order-form-page .money-box,
+      .order-form-page .product-line {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body class="app-bg">
-<div class="page-container">
+<body class="app-bg order-form-page">
+<div class="page-container page-wide">
   <div class="page-top-actions">
     <a class="btn btn-light btn-soft" th:href="@{/orders}">← Về danh sách</a>
+    <a th:if="${editMode}" class="btn btn-outline-primary" th:href="@{/orders/detail/{id}(id=${order.id})}">Xem chi tiết</a>
   </div>
 
   <section class="page-card">
     <div class="page-header">
       <div>
-        <h2>Tạo đơn hàng online</h2>
-        <p>Chọn sản phẩm, hệ thống tự tính tổng tiền và cập nhật tồn kho</p>
+        <h2 th:text="${formTitle}">Tạo đơn hàng online</h2>
+        <p th:text="${formSubtitle}">Chọn sản phẩm, nhập số lượng tùy ý, hệ thống tự tính tổng tiền.</p>
       </div>
     </div>
 
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
 
-    <form th:action="@{/orders/create}" method="post" id="orderForm">
-      <div class="form-section-title">Khách hàng</div>
-      <div class="row g-3 mb-4">
-        <div class="col-md-4">
+    <form th:action="${editMode} ? @{/orders/edit/{id}(id=${order.id})} : @{/orders/create}" method="post" id="orderForm">
+      <div class="form-section-title">Thông tin khách hàng</div>
+
+      <div class="order-form-grid mb-4">
+        <div>
           <label class="form-label">Tên khách hàng</label>
-          <input type="text" class="form-control" name="customerName" required>
+          <input type="text"
+                 class="form-control"
+                 name="customerName"
+                 th:value="${order != null ? order.customerName : ''}"
+                 required>
         </div>
 
-        <div class="col-md-4">
+        <div>
           <label class="form-label">Số điện thoại</label>
-          <input type="text" class="form-control" name="customerPhone" required>
+          <input type="text"
+                 class="form-control"
+                 name="customerPhone"
+                 th:value="${order != null ? order.customerPhone : ''}"
+                 required>
         </div>
 
-        <div class="col-md-4">
+        <div>
           <label class="form-label">Địa chỉ</label>
-          <input type="text" class="form-control" name="customerAddress">
+          <input type="text"
+                 class="form-control"
+                 name="customerAddress"
+                 th:value="${order != null ? order.customerAddress : ''}">
         </div>
       </div>
 
-      <div class="form-section-title">Sản phẩm</div>
+      <div class="form-section-title">Thông tin đơn hàng</div>
+
+      <div class="order-form-grid mb-4">
+        <div>
+          <label class="form-label">Trạng thái</label>
+          <select class="form-select" name="status">
+            <option th:each="s : ${statuses}"
+                    th:value="${s}"
+                    th:selected="${order != null and order.status == s}"
+                    th:text="${s}">
+              CHỜ_XÁC_NHẬN
+            </option>
+          </select>
+          <small class="text-muted">Nếu chọn ĐÃ_HỦY, hệ thống giữ chi tiết đơn nhưng không trừ tồn kho.</small>
+        </div>
+
+        <div>
+          <label class="form-label">Phí ship</label>
+          <input type="text"
+                 class="form-control money-input"
+                 name="shippingFee"
+                 th:value="${order != null ? order.shippingFee : 0}"
+                 placeholder="0">
+        </div>
+
+        <div>
+          <label class="form-label">Khách cọc</label>
+          <input type="text"
+                 class="form-control money-input"
+                 name="customerDeposit"
+                 th:value="${order != null ? order.customerDeposit : 0}"
+                 placeholder="0">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <div class="form-section-title mb-0">Sản phẩm trong đơn</div>
+
+        <button type="button" class="btn btn-outline-primary" id="btnAddLine">
+          + Thêm sản phẩm
+        </button>
+      </div>
+
       <div th:if="${#lists.isEmpty(products)}" class="alert alert-warning">
         Chưa có sản phẩm còn hoạt động để tạo đơn hàng.
       </div>
 
-      <div class="order-line row g-3 mb-3" th:each="i : ${#numbers.sequence(1,5)}">
-        <div class="col-md-7">
-          <select class="form-select product-select" name="productIds">
-            <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
-            <option th:each="p : ${products}"
-                    th:value="${p.id}"
-                    th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
-                    th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')}">
-            </option>
-          </select>
+      <div id="orderLines">
+        <div class="product-line"
+             th:if="${editMode and order != null and order.items != null and !#lists.isEmpty(order.items)}"
+             th:each="item : ${order.items}">
+          <div>
+            <select class="form-select product-select" name="productIds">
+              <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+              <option th:each="p : ${products}"
+                      th:value="${p.id}"
+                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
+                      th:selected="${item.product != null and item.product.id == p.id}"
+                      th:text="${p.name + ' | Tồn hiện tại: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+              </option>
+            </select>
+            <small class="line-stock-hint">Tồn hiện tại sẽ được cộng lại số lượng cũ khi lưu chỉnh sửa.</small>
+          </div>
+
+          <div>
+            <input type="number"
+                   class="form-control quantity-input"
+                   name="quantities"
+                   min="1"
+                   th:value="${item.quantity != null ? item.quantity : 1}"
+                   placeholder="SL">
+          </div>
+
+          <div>
+            <input type="text"
+                   class="form-control unit-price-input"
+                   name="unitPrices"
+                   th:value="${item.displayUnitPrice}"
+                   placeholder="Đơn giá">
+          </div>
+
+          <div class="line-total-wrap">
+            <input type="text" class="form-control line-total" value="0 đ" readonly>
+          </div>
+
+          <div class="remove-line-wrap">
+            <button type="button" class="btn btn-outline-danger w-100 remove-line">×</button>
+          </div>
         </div>
 
-        <div class="col-md-2">
-          <input type="number" class="form-control quantity-input" name="quantities" min="0" placeholder="SL">
-        </div>
+        <div class="product-line" th:if="${!editMode or order == null or order.items == null or #lists.isEmpty(order.items)}">
+          <div>
+            <select class="form-select product-select" name="productIds">
+              <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+              <option th:each="p : ${products}"
+                      th:value="${p.id}"
+                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
+                      th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+              </option>
+            </select>
+            <small class="line-stock-hint">Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.</small>
+          </div>
 
-        <div class="col-md-3">
-          <input type="text" class="form-control line-total" value="0" disabled>
+          <div>
+            <input type="number" class="form-control quantity-input" name="quantities" min="1" placeholder="SL">
+          </div>
+
+          <div>
+            <input type="text" class="form-control unit-price-input" name="unitPrices" placeholder="Đơn giá">
+          </div>
+
+          <div class="line-total-wrap">
+            <input type="text" class="form-control line-total" value="0 đ" readonly>
+          </div>
+
+          <div class="remove-line-wrap">
+            <button type="button" class="btn btn-outline-danger w-100 remove-line">×</button>
+          </div>
         </div>
       </div>
 
-      <div class="summary-strip">
-        <span>Tổng bill</span>
+      <template id="orderLineTemplate">
+        <div class="product-line">
+          <div>
+            <select class="form-select product-select" name="productIds">
+              <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+              <option th:each="p : ${products}"
+                      th:value="${p.id}"
+                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
+                      th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+              </option>
+            </select>
+            <small class="line-stock-hint">Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.</small>
+          </div>
+
+          <div>
+            <input type="number" class="form-control quantity-input" name="quantities" min="1" placeholder="SL">
+          </div>
+
+          <div>
+            <input type="text" class="form-control unit-price-input" name="unitPrices" placeholder="Đơn giá">
+          </div>
+
+          <div class="line-total-wrap">
+            <input type="text" class="form-control line-total" value="0 đ" readonly>
+          </div>
+
+          <div class="remove-line-wrap">
+            <button type="button" class="btn btn-outline-danger w-100 remove-line">×</button>
+          </div>
+        </div>
+      </template>
+
+      <div class="summary-strip mt-3">
+        <span>Tổng tiền sản phẩm</span>
         <strong id="orderTotal">0 đ</strong>
       </div>
 
+      <div class="money-box">
+        <div class="summary-strip">
+          <span>Phí ship</span>
+          <strong id="shippingPreview">0 đ</strong>
+        </div>
+
+        <div class="summary-strip">
+          <span>Khách cọc</span>
+          <strong id="depositPreview">0 đ</strong>
+        </div>
+
+        <div class="summary-strip">
+          <span>Còn phải thu</span>
+          <strong id="remainingPreview">0 đ</strong>
+        </div>
+      </div>
+
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit" th:disabled="${#lists.isEmpty(products)}">Lưu đơn hàng</button>
+        <button class="btn btn-primary" type="submit" th:disabled="${#lists.isEmpty(products)}">
+          <span th:text="${editMode ? 'Lưu chỉnh sửa' : 'Lưu đơn hàng'}">Lưu đơn hàng</span>
+        </button>
         <a class="btn btn-light btn-soft" th:href="@{/orders}">Hủy</a>
       </div>
     </form>
@@ -83,33 +307,100 @@
 
 <script>
   function parseMoney(value) {
-    const number = Number(value || 0);
+    if (value === null || value === undefined) return 0;
+    let raw = String(value).trim()
+      .replaceAll('đ', '')
+      .replaceAll(' ', '')
+      .replaceAll(',', '');
+
+    if (!raw) return 0;
+
+    if (/^\d+\.\d{1,2}$/.test(raw)) {
+      const decimalNumber = Number(raw);
+      return Number.isFinite(decimalNumber) ? decimalNumber : 0;
+    }
+
+    raw = raw.replaceAll('.', '');
+    const number = Number(raw || 0);
     return Number.isFinite(number) ? number : 0;
   }
 
   function formatMoney(value) {
-    return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+    return new Intl.NumberFormat('vi-VN').format(Math.max(value || 0, 0)) + ' đ';
+  }
+
+  function bindLineEvents(line) {
+    const select = line.querySelector('.product-select');
+    const quantityInput = line.querySelector('.quantity-input');
+    const unitPriceInput = line.querySelector('.unit-price-input');
+    const removeButton = line.querySelector('.remove-line');
+
+    select.addEventListener('change', () => {
+      const selected = select.options[select.selectedIndex];
+      const price = parseMoney(selected ? selected.dataset.price : 0);
+
+      if (!unitPriceInput.value || parseMoney(unitPriceInput.value) <= 0) {
+        unitPriceInput.value = Math.round(price);
+      }
+
+      if (!quantityInput.value || parseInt(quantityInput.value || '0', 10) <= 0) {
+        quantityInput.value = 1;
+      }
+
+      updateOrderTotal();
+    });
+
+    quantityInput.addEventListener('input', updateOrderTotal);
+    unitPriceInput.addEventListener('input', updateOrderTotal);
+
+    removeButton.addEventListener('click', () => {
+      const lines = document.querySelectorAll('.product-line');
+      if (lines.length <= 1) {
+        select.value = '';
+        quantityInput.value = '';
+        unitPriceInput.value = '';
+      } else {
+        line.remove();
+      }
+      updateOrderTotal();
+    });
   }
 
   function updateOrderTotal() {
-    let total = 0;
-    document.querySelectorAll('.order-line').forEach((line) => {
-      const select = line.querySelector('.product-select');
+    let productTotal = 0;
+
+    document.querySelectorAll('.product-line').forEach((line) => {
       const quantityInput = line.querySelector('.quantity-input');
-      const selected = select.options[select.selectedIndex];
-      const price = parseMoney(selected ? selected.dataset.price : 0);
+      const unitPriceInput = line.querySelector('.unit-price-input');
       const quantity = parseInt(quantityInput.value || '0', 10);
-      const lineTotal = price * Math.max(quantity, 0);
+      const unitPrice = parseMoney(unitPriceInput.value);
+      const lineTotal = unitPrice * Math.max(quantity, 0);
+
       line.querySelector('.line-total').value = formatMoney(lineTotal);
-      total += lineTotal;
+      productTotal += lineTotal;
     });
-    document.getElementById('orderTotal').textContent = formatMoney(total);
+
+    const shipping = parseMoney(document.querySelector('[name="shippingFee"]').value);
+    const deposit = parseMoney(document.querySelector('[name="customerDeposit"]').value);
+    const remaining = Math.max(productTotal - deposit, 0);
+
+    document.getElementById('orderTotal').textContent = formatMoney(productTotal);
+    document.getElementById('shippingPreview').textContent = formatMoney(shipping);
+    document.getElementById('depositPreview').textContent = formatMoney(deposit);
+    document.getElementById('remainingPreview').textContent = formatMoney(remaining);
   }
 
-  document.querySelectorAll('.product-select, .quantity-input').forEach((element) => {
-    element.addEventListener('change', updateOrderTotal);
-    element.addEventListener('input', updateOrderTotal);
+  document.querySelectorAll('.product-line').forEach(bindLineEvents);
+  document.querySelectorAll('.money-input').forEach((element) => element.addEventListener('input', updateOrderTotal));
+
+  document.getElementById('btnAddLine').addEventListener('click', () => {
+    const template = document.getElementById('orderLineTemplate');
+    const clone = template.content.firstElementChild.cloneNode(true);
+    document.getElementById('orderLines').appendChild(clone);
+    bindLineEvents(clone);
+    updateOrderTotal();
   });
+
   updateOrderTotal();
 </script>
 </body>
