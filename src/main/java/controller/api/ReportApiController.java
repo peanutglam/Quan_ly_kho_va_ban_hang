@@ -1,6 +1,7 @@
 package controller.api;
 
 import dto.DailyReportDTO;
+import entity.AppUser;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,13 +17,10 @@ import java.util.Map;
 @RequestMapping("/api/reports")
 public class ReportApiController {
 
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-
     private final OrderService orderService;
     private final AuthService authService;
 
-    public ReportApiController(OrderService orderService,
-                               AuthService authService) {
+    public ReportApiController(OrderService orderService, AuthService authService) {
         this.orderService = orderService;
         this.authService = authService;
     }
@@ -33,25 +31,28 @@ public class ReportApiController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date
     ) {
+        Map<String, Object> body = new LinkedHashMap<>();
+
         try {
-            authService.getCurrentUser();
+            AppUser currentUser = authService.getCurrentUser();
+
+            if (currentUser == null) {
+                body.put("success", false);
+                body.put("message", "Bạn cần đăng nhập");
+                return ResponseEntity.status(401).body(body);
+            }
 
             LocalDate reportDate = date == null
-                    ? LocalDate.now(VIETNAM_ZONE)
+                    ? LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
                     : date;
 
             DailyReportDTO report = orderService.getDailyReport(reportDate);
 
             return ResponseEntity.ok(report);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(error(e.getMessage()));
+            body.put("success", false);
+            body.put("message", e.getMessage() == null ? "Không tải được báo cáo ngày" : e.getMessage());
+            return ResponseEntity.badRequest().body(body);
         }
-    }
-
-    private Map<String, Object> error(String message) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", false);
-        body.put("message", message == null || message.isBlank() ? "Có lỗi xảy ra" : message);
-        return body;
     }
 }
