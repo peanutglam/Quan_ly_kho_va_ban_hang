@@ -2,6 +2,7 @@ package controller.api;
 
 import dto.CreateOrderApiRequest;
 import dto.OrderApiResponse;
+import dto.UpdateOrderStatusApiRequest;
 import entity.AppUser;
 import entity.Order;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class OrderApiController {
             Page<Order> orderPage = orderService.getOrdersPageForApi(owner, page, size, keyword, status);
 
             Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
             body.put("content", orderPage.getContent().stream().map(OrderApiResponse::new).toList());
             body.put("currentPage", orderPage.getNumber());
             body.put("totalPages", orderPage.getTotalPages());
@@ -46,10 +48,21 @@ public class OrderApiController {
 
             return ResponseEntity.ok(body);
         } catch (Exception e) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("success", false);
-            body.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(body);
+            return ResponseEntity.badRequest().body(error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOrderDetail(@PathVariable Long id) {
+        try {
+            AppUser currentUser = authService.getCurrentUser();
+            AppUser owner = authService.getWorkspaceOwner(currentUser);
+
+            Order order = orderService.getOrderDetailForApi(owner, id);
+
+            return ResponseEntity.ok(new OrderApiResponse(order));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(error(e.getMessage()));
         }
     }
 
@@ -64,6 +77,42 @@ public class OrderApiController {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", true);
             body.put("message", "Tạo đơn hàng thành công");
+            body.put("id", order.getId());
+            body.put("orderCode", order.getOrderCode());
+            body.put("status", order.getStatus());
+            body.put("totalAmount", order.getTotalAmount());
+            body.put("totalBill", order.getTotalBill());
+            body.put("order", new OrderApiResponse(order));
+
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id,
+                                               @RequestBody(required = false) UpdateOrderStatusApiRequest request) {
+        try {
+            AppUser currentUser = authService.getCurrentUser();
+            AppUser owner = authService.getWorkspaceOwner(currentUser);
+
+            String status = request == null ? "" : request.getStatus();
+
+            if (status == null || status.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(error("Trạng thái đơn hàng không được để trống"));
+            }
+
+            Order order = orderService.updateStatusForApi(owner, id, status);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("message", "Cập nhật trạng thái thành công");
+            body.put("id", order.getId());
+            body.put("orderCode", order.getOrderCode());
+            body.put("status", order.getStatus());
+            body.put("totalAmount", order.getTotalAmount());
+            body.put("totalBill", order.getTotalBill());
             body.put("order", new OrderApiResponse(order));
 
             return ResponseEntity.ok(body);
