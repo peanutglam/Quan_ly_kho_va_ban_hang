@@ -28,7 +28,28 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     long countByUserAndStatus(AppUser user, String status);
 
     boolean existsByOrderCode(String orderCode);
-
+    @Query("""
+        SELECT 
+            FUNCTION('DATE', o.createdAt),
+            COUNT(o.id),
+            COALESCE(SUM(
+                CASE
+                    WHEN o.status = 'ĐÃ_GIAO' OR o.status = 'HOÀN_THÀNH'
+                    THEN COALESCE(o.totalBill, o.totalAmount, 0)
+                    ELSE 0
+                END
+            ), 0)
+        FROM Order o
+        WHERE o.user = :user
+          AND o.createdAt >= :start
+          AND o.createdAt < :end
+          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+        GROUP BY FUNCTION('DATE', o.createdAt)
+        ORDER BY FUNCTION('DATE', o.createdAt) ASC
+        """)
+    List<Object[]> findDailyOrderRevenueTrend(@Param("user") AppUser user,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end);
     @Query("""
             SELECT DISTINCT o FROM Order o
             WHERE o.user = :user

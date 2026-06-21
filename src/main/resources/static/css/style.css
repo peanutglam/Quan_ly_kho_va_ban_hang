@@ -849,3 +849,23 @@ label, .form-label { color: #4c3545; font-weight: 800; }
         grid-template-columns: 1fr;
     }
 }
+.chart-box {
+    width: 100%;
+    min-height: 360px;
+    background: #ffffff;
+    border: 1px solid rgba(216, 95, 149, 0.16);
+    border-radius: 22px;
+    padding: 18px;
+    overflow-x: auto;
+}
+
+.chart-box canvas {
+    width: 100% !important;
+    max-height: 360px;
+}
+
+@media (max-width: 768px) {
+    .chart-box {
+        min-width: 720px;
+    }
+}

@@ -8,7 +8,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import service.AuthService;
 import service.OrderService;
+import dto.DailyTrendDTO;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalDate;
 
 /**
@@ -36,7 +40,21 @@ public class ReportController {
         if (date == null) date = LocalDate.now();
 
         DailyReportDTO report = orderService.getDailyReport(date);
+        List<DailyTrendDTO> trendData = orderService.getLast31DaysTrend(date);
 
+        List<String> trendLabels = new ArrayList<>();
+        List<Long> trendOrderCounts = new ArrayList<>();
+        List<BigDecimal> trendRevenues = new ArrayList<>();
+
+        for (DailyTrendDTO item : trendData) {
+            trendLabels.add(item.getDate().getDayOfMonth() + "/" + item.getDate().getMonthValue());
+            trendOrderCounts.add(item.getOrderCount());
+            trendRevenues.add(item.getRevenue());
+        }
+
+        model.addAttribute("trendLabels", trendLabels);
+        model.addAttribute("trendOrderCounts", trendOrderCounts);
+        model.addAttribute("trendRevenues", trendRevenues);
         model.addAttribute("report", report);
         model.addAttribute("selectedDate", date);
         model.addAttribute("today", LocalDate.now());
