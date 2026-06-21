@@ -16,7 +16,8 @@ import org.springframework.util.StringUtils;
 import repository.OrderItemRepository;
 import repository.OrderRepository;
 import repository.StockImportRepository;
-
+import dto.DailyTrendDTO;
+import java.time.ZoneId;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -622,7 +623,68 @@ public class OrderService {
 
         return result;
     }
+    public List<DailyTrendDTO> getLast31DaysTrend(LocalDate selectedDate) {
+        AppUser ownerUser = owner();
 
+        LocalDate endDate = selectedDate == null
+                ? LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                : selectedDate;
+
+        LocalDate startDate = endDate.minusDays(30);
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
+
+        List<Object[]> rows = orderRepository.findDailyOrderRevenueTrend(ownerUser, start, endExclusive);
+
+        Map<LocalDate, DailyTrendDTO> resultMap = new LinkedHashMap<>();
+
+        for (int i = 0; i <= 30; i++) {
+            LocalDate date = startDate.plusDays(i);
+            resultMap.put(date, new DailyTrendDTO(date, 0, BigDecimal.ZERO));
+        }
+
+        if (rows != null) {
+            for (Object[] row : rows) {
+                if (row == null || row.length < 3 || row[0] == null) {
+                    continue;
+                }
+
+                LocalDate date = convertToLocalDate(row[0]);
+
+                if (date == null || !resultMap.containsKey(date)) {
+                    continue;
+                }
+
+                long orderCount = row[1] == null ? 0L : ((Number) row[1]).longValue();
+                BigDecimal revenue = row[2] == null ? BigDecimal.ZERO : new BigDecimal(row[2].toString());
+
+                resultMap.put(date, new DailyTrendDTO(date, orderCount, revenue));
+            }
+        }
+
+        return new ArrayList<>(resultMap.values());
+    }
+
+    private LocalDate convertToLocalDate(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof LocalDate) {
+            return (LocalDate) value;
+        }
+
+        if (value instanceof java.sql.Date) {
+            return ((java.sql.Date) value).toLocalDate();
+        }
+
+        if (value instanceof java.util.Date) {
+            return new java.sql.Date(((java.util.Date) value).getTime()).toLocalDate();
+        }
+
+        return LocalDate.parse(value.toString());
+    }
     public DailyReportDTO getDailyReport(LocalDate date) {
         AppUser ownerUser = owner();
 

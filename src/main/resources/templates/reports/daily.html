@@ -169,9 +169,118 @@
             </section>
         </div>
     </div>
+    <section class="panel-card mt-4">
+        <div class="panel-header">
+            <div>
+                <h5>Biến động số đơn hàng và doanh thu 31 ngày gần nhất</h5>
+                <p class="text-muted mb-0">
+                    Theo dõi xu hướng đơn hàng và doanh thu tính đến ngày đang xem báo cáo.
+                </p>
+            </div>
+        </div>
 
+        <div class="chart-box">
+            <canvas id="dailyTrendChart" height="120"></canvas>
+        </div>
+    </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script th:inline="javascript">
+    const trendLabels = /*[[${trendLabels}]]*/ [];
+    const trendOrderCounts = /*[[${trendOrderCounts}]]*/ [];
+    const trendRevenues = /*[[${trendRevenues}]]*/ [];
+
+    const trendCanvas = document.getElementById('dailyTrendChart');
+
+    if (trendCanvas) {
+        const ctx = trendCanvas.getContext('2d');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [
+                    {
+                        label: 'Số đơn hàng',
+                        data: trendOrderCounts,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        yAxisID: 'yOrders',
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'Doanh thu',
+                        data: trendRevenues,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        yAxisID: 'yRevenue',
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                if (context.dataset.label === 'Doanh thu') {
+                                    const value = Number(context.raw || 0);
+                                    return 'Doanh thu: ' + value.toLocaleString('vi-VN') + ' đ';
+                                }
+
+                                return 'Số đơn hàng: ' + context.raw;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    yOrders: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        title: {
+                            display: true,
+                            text: 'Số đơn'
+                        }
+                    },
+                    yRevenue: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                return Number(value).toLocaleString('vi-VN') + ' đ';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Doanh thu'
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
 </body>
 </html>

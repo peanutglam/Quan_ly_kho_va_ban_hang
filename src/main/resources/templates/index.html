@@ -180,14 +180,13 @@
                     <tr>
                         <th>Sản phẩm</th>
                         <th>Đã bán</th>
-                        <th>Doanh thu</th>
+
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="item : ${bestSellingProducts}">
                         <td th:text="${item[0]}">Tên sản phẩm</td>
                         <td><span class="badge bg-success" th:text="${item[1] == null ? 0 : item[1]}">0</span></td>
-                        <td th:text="${#numbers.formatDecimal(item[2] == null ? 0 : item[2], 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
                     </tr>
                     </tbody>
                 </table>
