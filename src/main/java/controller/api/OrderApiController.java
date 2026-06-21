@@ -28,12 +28,14 @@ public class OrderApiController {
 
     @GetMapping
     public ResponseEntity<?> listOrders(@RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "20") int size) {
+                                        @RequestParam(defaultValue = "20") int size,
+                                        @RequestParam(defaultValue = "") String keyword,
+                                        @RequestParam(defaultValue = "") String status) {
         try {
             AppUser currentUser = authService.getCurrentUser();
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
-            Page<Order> orderPage = orderService.getOrdersPageForApi(owner, page, size);
+            Page<Order> orderPage = orderService.getOrdersPageForApi(owner, page, size, keyword, status);
 
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("content", orderPage.getContent().stream().map(OrderApiResponse::new).toList());
@@ -44,7 +46,10 @@ public class OrderApiController {
 
             return ResponseEntity.ok(body);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(error(e.getMessage()));
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(body);
         }
     }
 
