@@ -188,7 +188,16 @@ public class OrderService {
             order.getItems().size();
 
             for (OrderItem item : order.getItems()) {
+                if (item == null) {
+                    continue;
+                }
+
+                item.getQuantity();
+                item.getUnitPrice();
+                item.getSubtotal();
+
                 if (item.getProduct() != null) {
+                    item.getProduct().getId();
                     item.getProduct().getName();
                     item.getProduct().getCode();
                 }
