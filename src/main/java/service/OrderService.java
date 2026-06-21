@@ -60,7 +60,7 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Order> getOrdersPageForApi(AppUser owner, int page, int size) {
+    public Page<Order> getOrdersPageForApi(AppUser owner, int page, int size, String keyword, String status) {
         if (owner == null) {
             throw new IllegalArgumentException("Bạn cần đăng nhập");
         }
@@ -68,10 +68,14 @@ public class OrderService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(1, Math.min(size, 50));
 
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        String safeStatus = status == null ? "" : status.trim();
+
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        return orderRepository.findByUserOrderByIdDesc(owner, pageable);
+        return orderRepository.filterOrdersPaged(owner, safeKeyword, safeStatus, pageable);
     }
+
 
     @Transactional
     public Order createOrderFromMobileApi(AppUser owner, CreateOrderApiRequest request) {
