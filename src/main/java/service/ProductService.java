@@ -2,21 +2,30 @@ package service;
 
 import entity.AppUser;
 import entity.Product;
+import entity.ProductImage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import repository.OrderItemRepository;
 import repository.ProductRepository;
 import repository.StockImportRepository;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class ProductService {
@@ -130,8 +139,12 @@ public class ProductService {
     public Product getById(Long id, AppUser user) {
         AppUser owner = workspaceOwner(user);
 
-        return productRepository.findByIdAndUserAndActiveTrue(id, owner)
+        Product product = productRepository.findByIdAndUserAndActiveTrue(id, owner)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm trong web của Owner này"));
+
+        product.getImages().size();
+
+        return product;
     }
 
     @Transactional(readOnly = true)
@@ -140,8 +153,12 @@ public class ProductService {
             throw new IllegalArgumentException("Sản phẩm không hợp lệ");
         }
 
-        return productRepository.findByIdAndActiveTrueAndQuantityGreaterThan(id, 0)
+        Product product = productRepository.findByIdAndActiveTrueAndQuantityGreaterThan(id, 0)
                 .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại hoặc đã hết hàng"));
+
+        product.getImages().size();
+
+        return product;
     }
 
     @Transactional
@@ -161,6 +178,7 @@ public class ProductService {
             product.setTotalQuantity(product.getQuantity());
         }
 
+        syncProductImagesFromCurrentImageUrl(product);
         product.recalculateInventoryFields();
 
         return productRepository.save(product);
@@ -183,6 +201,20 @@ public class ProductService {
         existing.setCategory(updatedProduct.getCategory());
         existing.setBrand(updatedProduct.getBrand());
         existing.setImageUrl(updatedProduct.getImageUrl());
+
+        existing.getImages().clear();
+
+        for (ProductImage image : updatedProduct.getImages()) {
+            image.setProduct(existing);
+            existing.getImages().add(image);
+        }
+
+        ProductImage mainImage = existing.getMainImageObject();
+
+        if (mainImage != null) {
+            existing.setImageUrl(mainImage.getImageUrl());
+        }
+
         existing.setPromotionEnabled(updatedProduct.getPromotionEnabled());
         existing.setPromotionPercent(updatedProduct.getPromotionPercent());
         existing.setPromotionPrice(updatedProduct.getPromotionPrice());
@@ -198,6 +230,199 @@ public class ProductService {
         existing.recalculateInventoryFields();
 
         return productRepository.save(existing);
+    }
+
+    @Transactional
+    public void syncProductUploadedImages(Product product,
+                                          List<String> existingImageUrls,
+                                          List<MultipartFile> imageFiles,
+                                          List<Integer> imagePositionXs,
+                                          List<Integer> imagePositionYs,
+                                          Integer mainImageIndex) {
+        if (product == null) {
+            return;
+        }
+
+        product.getImages().clear();
+
+        int maxSize = maxSize(existingImageUrls, imageFiles, imagePositionXs, imagePositionYs);
+        int sort = 0;
+
+        for (int i = 0; i < maxSize; i++) {
+            String imageUrl = getStringValue(existingImageUrls, i);
+            MultipartFile file = getFileValue(imageFiles, i);
+
+            if (file != null && !file.isEmpty()) {
+                imageUrl = saveUploadedProductImage(file);
+            }
+
+            if (!StringUtils.hasText(imageUrl)) {
+                continue;
+            }
+
+            ProductImage image = new ProductImage();
+            image.setImageUrl(imageUrl);
+            image.setPositionX(getPositionValue(imagePositionXs, i));
+            image.setPositionY(getPositionValue(imagePositionYs, i));
+            image.setSortOrder(sort++);
+            image.setMainImage(mainImageIndex != null && mainImageIndex == i);
+            image.setProduct(product);
+
+            product.getImages().add(image);
+        }
+
+        boolean hasMainImage = product.getImages()
+                .stream()
+                .anyMatch(ProductImage::getMainImage);
+
+        if (!hasMainImage && !product.getImages().isEmpty()) {
+            product.getImages().get(0).setMainImage(true);
+        }
+
+        ProductImage main = product.getMainImageObject();
+
+        if (main != null) {
+            product.setImageUrl(main.getImageUrl());
+        } else {
+            product.setImageUrl(null);
+        }
+    }
+
+    private String saveUploadedProductImage(MultipartFile file) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = getSafeExtension(originalFilename);
+            String filename = UUID.randomUUID() + extension;
+
+            Path uploadDir = Paths.get("uploads", "products");
+            Files.createDirectories(uploadDir);
+
+            Path targetPath = uploadDir.resolve(filename);
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            return "/uploads/products/" + filename;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Không thể lưu ảnh sản phẩm: " + e.getMessage());
+        }
+    }
+
+    private String getSafeExtension(String filename) {
+        if (filename == null || filename.trim().isEmpty()) {
+            return ".jpg";
+        }
+
+        String lower = filename.toLowerCase();
+
+        if (lower.endsWith(".png")) {
+            return ".png";
+        }
+
+        if (lower.endsWith(".webp")) {
+            return ".webp";
+        }
+
+        if (lower.endsWith(".jpeg")) {
+            return ".jpeg";
+        }
+
+        if (lower.endsWith(".jpg")) {
+            return ".jpg";
+        }
+
+        return ".jpg";
+    }
+
+    private int maxSize(List<String> existingImageUrls,
+                        List<MultipartFile> imageFiles,
+                        List<Integer> imagePositionXs,
+                        List<Integer> imagePositionYs) {
+        int max = 0;
+
+        if (existingImageUrls != null) {
+            max = Math.max(max, existingImageUrls.size());
+        }
+
+        if (imageFiles != null) {
+            max = Math.max(max, imageFiles.size());
+        }
+
+        if (imagePositionXs != null) {
+            max = Math.max(max, imagePositionXs.size());
+        }
+
+        if (imagePositionYs != null) {
+            max = Math.max(max, imagePositionYs.size());
+        }
+
+        return max;
+    }
+
+    private String getStringValue(List<String> values, int index) {
+        if (values == null || index < 0 || index >= values.size()) {
+            return "";
+        }
+
+        String value = values.get(index);
+        return value == null ? "" : value.trim();
+    }
+
+    private MultipartFile getFileValue(List<MultipartFile> values, int index) {
+        if (values == null || index < 0 || index >= values.size()) {
+            return null;
+        }
+
+        return values.get(index);
+    }
+
+    private int getPositionValue(List<Integer> values, int index) {
+        if (values == null || index < 0 || index >= values.size() || values.get(index) == null) {
+            return 50;
+        }
+
+        int value = values.get(index);
+
+        if (value < 0) {
+            return 0;
+        }
+
+        if (value > 100) {
+            return 100;
+        }
+
+        return value;
+    }
+
+    private void syncProductImagesFromCurrentImageUrl(Product product) {
+        if (product == null) {
+            return;
+        }
+
+        if (!product.getImages().isEmpty()) {
+            ProductImage main = product.getMainImageObject();
+
+            if (main != null) {
+                product.setImageUrl(main.getImageUrl());
+            }
+
+            return;
+        }
+
+        if (!StringUtils.hasText(product.getImageUrl())) {
+            return;
+        }
+
+        ProductImage image = new ProductImage();
+        image.setImageUrl(product.getImageUrl());
+        image.setPositionX(50);
+        image.setPositionY(50);
+        image.setSortOrder(0);
+        image.setMainImage(true);
+        image.setProduct(product);
+
+        product.getImages().add(image);
     }
 
     @Transactional

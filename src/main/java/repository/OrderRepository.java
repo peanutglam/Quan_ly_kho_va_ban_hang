@@ -29,6 +29,64 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     boolean existsByOrderCode(String orderCode);
     @Query("""
+        SELECT COUNT(o.id)
+        FROM Order o
+        WHERE o.user = :user
+          AND o.createdAt >= :start
+          AND o.createdAt < :end
+          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+        """)
+    Long countOrdersByDateRange(@Param("user") AppUser user,
+                                @Param("start") LocalDateTime start,
+                                @Param("end") LocalDateTime end);
+
+    @Query("""
+        SELECT COUNT(o.id)
+        FROM Order o
+        WHERE o.user = :user
+          AND o.status = :status
+          AND o.createdAt >= :start
+          AND o.createdAt < :end
+        """)
+    Long countOrdersByStatusAndDateRange(@Param("user") AppUser user,
+                                         @Param("status") String status,
+                                         @Param("start") LocalDateTime start,
+                                         @Param("end") LocalDateTime end);
+
+    @Query("""
+        SELECT COALESCE(SUM(COALESCE(o.totalBill, o.totalAmount, 0)), 0)
+        FROM Order o
+        WHERE o.user = :user
+          AND (
+                o.status = 'ĐÃ_GIAO'
+                OR o.status = 'HOÀN_THÀNH'
+              )
+          AND o.createdAt >= :start
+          AND o.createdAt < :end
+        """)
+    BigDecimal sumRevenueByDateRange(@Param("user") AppUser user,
+                                     @Param("start") LocalDateTime start,
+                                     @Param("end") LocalDateTime end);
+
+    @Query("""
+        SELECT 
+            o.orderCode,
+            o.customerName,
+            o.status,
+            COALESCE(o.totalBill, o.totalAmount, 0),
+            o.createdAt
+        FROM Order o
+        WHERE o.user = :user
+          AND o.createdAt >= :start
+          AND o.createdAt < :end
+          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+        ORDER BY o.createdAt DESC
+        """)
+    List<Object[]> findOrderSummaryByDateRange(@Param("user") AppUser user,
+                                               @Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end);
+
+    @Query("""
         SELECT 
             FUNCTION('DATE', o.createdAt),
             COUNT(o.id),
@@ -47,6 +105,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         GROUP BY FUNCTION('DATE', o.createdAt)
         ORDER BY FUNCTION('DATE', o.createdAt) ASC
         """)
+
+  
     List<Object[]> findDailyOrderRevenueTrend(@Param("user") AppUser user,
                                               @Param("start") LocalDateTime start,
                                               @Param("end") LocalDateTime end);

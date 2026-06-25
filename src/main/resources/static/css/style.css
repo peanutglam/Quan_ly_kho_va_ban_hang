@@ -869,3 +869,361 @@ label, .form-label { color: #4c3545; font-weight: 800; }
         min-width: 720px;
     }
 }
+.report-filter-form {
+    display: flex;
+    align-items: end;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    margin-bottom: 22px;
+    padding: 18px;
+    background: #ffffff;
+    border: 1px solid rgba(216, 95, 149, 0.18);
+    border-radius: 22px;
+    box-shadow: 0 12px 32px rgba(216, 95, 149, 0.08);
+}
+
+.report-filter-form .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.report-filter-form label {
+    font-weight: 800;
+    color: #6f3b55;
+    font-size: 14px;
+}
+
+.report-filter-form input[type="date"] {
+    width: 190px;
+    height: 46px;
+    border: 1px solid rgba(216, 95, 149, 0.35);
+    border-radius: 16px;
+    padding: 0 14px;
+    outline: none;
+    font-weight: 700;
+    color: #2d2030;
+    background: #fff;
+}
+
+.report-filter-form input[type="date"]:focus {
+    border-color: #d95f95;
+    box-shadow: 0 0 0 4px rgba(216, 95, 149, 0.12);
+}
+
+.btn-filter-report {
+    height: 46px;
+    border: none;
+    border-radius: 16px;
+    padding: 0 24px;
+    background: #d95f95;
+    color: #ffffff;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(216, 95, 149, 0.22);
+}
+
+.btn-filter-report:hover {
+    background: #c94d84;
+}
+
+@media (max-width: 768px) {
+    .report-filter-form {
+        align-items: stretch;
+    }
+
+    .report-filter-form .filter-field,
+    .report-filter-form input[type="date"],
+    .btn-filter-report {
+        width: 100%;
+    }
+}
+.product-image-manager {
+    margin-top: 8px;
+    padding: 20px;
+    border: 1px solid rgba(216, 95, 149, 0.2);
+    border-radius: 22px;
+    background: #fff;
+}
+
+.image-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.image-manager-header h4 {
+    margin: 0;
+    font-weight: 900;
+    color: #2d2030;
+}
+
+.image-manager-header p {
+    margin: 4px 0 0;
+    color: #8a7280;
+}
+
+.image-count-box {
+    margin-bottom: 16px;
+    padding: 14px;
+    border-radius: 18px;
+    background: #fff7fb;
+    border: 1px solid rgba(216, 95, 149, 0.14);
+}
+
+.image-count-box label {
+    font-weight: 900;
+    color: #6f3b55;
+    margin-bottom: 8px;
+}
+
+.image-count-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.image-count-actions input {
+    max-width: 160px;
+}
+
+.btn-add-image {
+    border: none;
+    border-radius: 14px;
+    background: #d95f95;
+    color: #fff;
+    padding: 10px 16px;
+    font-weight: 900;
+}
+
+.product-image-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 18px;
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(216, 95, 149, 0.18);
+    border-radius: 20px;
+    background: #fff7fb;
+}
+
+.image-preview-box {
+    width: 180px;
+    height: 180px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #f7d5e4;
+    border: 1px solid rgba(216, 95, 149, 0.2);
+}
+
+.image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 50%;
+    display: block;
+}
+
+.image-config label {
+    font-weight: 800;
+    color: #6f3b55;
+    margin-bottom: 6px;
+}
+
+.image-row-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-top: 12px;
+}
+
+.main-image-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #2d2030;
+    font-weight: 800;
+}
+
+.btn-remove-image {
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    color: #c6284b;
+    padding: 8px 14px;
+    font-weight: 900;
+    border: 1px solid rgba(198, 40, 75, 0.2);
+}
+
+.empty-image-hint {
+    padding: 16px;
+    border-radius: 16px;
+    background: #fff7fb;
+    color: #8a7280;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .image-manager-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .image-count-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .image-count-actions input {
+        max-width: 100%;
+    }
+
+    .product-image-row {
+        grid-template-columns: 1fr;
+    }
+
+    .image-preview-box {
+        width: 100%;
+        height: 240px;
+    }
+
+    .image-row-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+/* =========================
+   FIX BADGE / STATUS UI
+   ========================= */
+
+/* Badge chung */
+.badge,
+.status-badge,
+.role-badge,
+.stock-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+}
+
+/* Bootstrap badge fix: ép chữ trắng cho các nền màu đậm */
+.badge.bg-success,
+.badge.bg-primary,
+.badge.bg-secondary,
+.badge.bg-danger,
+.badge.bg-warning,
+.badge.bg-info {
+    color: #ffffff !important;
+}
+
+/* Trạng thái hoạt động */
+.badge.bg-success,
+.status-active,
+.active-badge {
+    background: #15803d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(21, 128, 61, 0.18);
+}
+
+/* Trạng thái không hoạt động / bị khóa */
+.status-inactive,
+.inactive-badge,
+.badge.bg-secondary {
+    background: #64748b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(100, 116, 139, 0.18);
+}
+
+/* Role Owner */
+.role-owner,
+.owner-badge,
+.badge-owner {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+/* Role nhân viên bán hàng */
+.role-sales,
+.sales-badge,
+.badge-sales {
+    background: #7c3aed !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(124, 58, 237, 0.18);
+}
+
+/* Role nhân viên kho */
+.role-warehouse,
+.warehouse-badge,
+.badge-warehouse {
+    background: #0f766e !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(15, 118, 110, 0.18);
+}
+
+/* Badge số lượng tồn kho */
+.stock-badge,
+.quantity-badge,
+.inventory-badge {
+    background: #ecfdf5 !important;
+    color: #047857 !important;
+    border: 1px solid #a7f3d0;
+}
+
+/* Nếu dùng Bootstrap bg-success cho tồn kho thì vẫn cho dễ nhìn */
+.product-stock-badge {
+    background: #ecfdf5 !important;
+    color: #047857 !important;
+    border: 1px solid #a7f3d0;
+}
+
+/* Table nhìn thoáng hơn */
+.table td,
+.table th {
+    vertical-align: middle;
+}
+
+.table thead th {
+    color: #7a3154;
+    font-weight: 900;
+}
+
+.table tbody td {
+    color: #2d2030;
+}
+
+/* Fix riêng trường hợp chữ trong badge bị kế thừa màu đỏ/xám */
+.badge span,
+.status-badge span,
+.role-badge span,
+.stock-badge span {
+    color: inherit !important;
+}
+
+/* Hover nhẹ cho badge */
+.badge,
+.status-badge,
+.role-badge,
+.stock-badge {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.badge:hover,
+.status-badge:hover,
+.role-badge:hover,
+.stock-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(31, 41, 55, 0.12);
+}
