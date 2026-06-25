@@ -1,46 +1,63 @@
 package controller;
 
 import dto.DailyReportDTO;
-import entity.AppUser;
+import dto.DailyTrendDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import service.AuthService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import service.OrderService;
-import dto.DailyTrendDTO;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalDate;
 
-/**
- * Nhiệm vụ 3: Báo cáo cuối ngày.
- * Chỉ Owner/Admin truy cập được.
- */
 @Controller
-@RequestMapping("/reports")
 public class ReportController {
 
     private final OrderService orderService;
-    private final AuthService authService;
 
-    public ReportController(OrderService orderService, AuthService authService) {
+    public ReportController(OrderService orderService) {
         this.orderService = orderService;
-        this.authService = authService;
     }
 
-    @GetMapping("/daily")
-    public String dailyReport(@RequestParam(value = "date", required = false)
-                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                              Model model) {
-        authService.requireRole("OWNER", "STAFF");
+    @GetMapping("/reports/daily")
+    public String dailyReport(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date,
 
-        if (date == null) date = LocalDate.now();
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate chartStartDate,
 
-        DailyReportDTO report = orderService.getDailyReport(date);
-        List<DailyTrendDTO> trendData = orderService.getLast31DaysTrend(date);
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate chartEndDate,
+
+            Model model
+    ) {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        LocalDate selectedDate = date == null ? today : date;
+
+        // Phần trên của báo cáo vẫn lấy theo 1 ngày.
+        DailyReportDTO report = orderService.getDailyReport(selectedDate);
+
+        // Phần biểu đồ mới lấy theo khoảng thời gian riêng.
+        LocalDate safeChartEndDate = chartEndDate == null ? selectedDate : chartEndDate;
+        LocalDate safeChartStartDate = chartStartDate == null ? safeChartEndDate.minusDays(30) : chartStartDate;
+
+        if (safeChartStartDate.isAfter(safeChartEndDate)) {
+            LocalDate temp = safeChartStartDate;
+            safeChartStartDate = safeChartEndDate;
+            safeChartEndDate = temp;
+        }
+
+        List<DailyTrendDTO> trendData = orderService.getTrendByRange(safeChartStartDate, safeChartEndDate);
 
         List<String> trendLabels = new ArrayList<>();
         List<Long> trendOrderCounts = new ArrayList<>();
@@ -52,12 +69,17 @@ public class ReportController {
             trendRevenues.add(item.getRevenue());
         }
 
+        model.addAttribute("today", today);
+        model.addAttribute("selectedDate", selectedDate);
+        model.addAttribute("report", report);
+
+        model.addAttribute("chartStartDate", safeChartStartDate);
+        model.addAttribute("chartEndDate", safeChartEndDate);
+
         model.addAttribute("trendLabels", trendLabels);
         model.addAttribute("trendOrderCounts", trendOrderCounts);
         model.addAttribute("trendRevenues", trendRevenues);
-        model.addAttribute("report", report);
-        model.addAttribute("selectedDate", date);
-        model.addAttribute("today", LocalDate.now());
+
         return "reports/daily";
     }
 }

@@ -10,10 +10,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import service.AuthService;
 import service.ProductService;
 import service.SupplierService;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/products")
@@ -78,6 +81,11 @@ public class ProductController {
     public String createProduct(@Valid @ModelAttribute("product") Product product,
                                 BindingResult bindingResult,
                                 @RequestParam(value = "supplierId", required = false) Long supplierId,
+                                @RequestParam(value = "existingImageUrls", required = false) List<String> existingImageUrls,
+                                @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles,
+                                @RequestParam(value = "imagePositionXs", required = false) List<Integer> imagePositionXs,
+                                @RequestParam(value = "imagePositionYs", required = false) List<Integer> imagePositionYs,
+                                @RequestParam(value = "mainImageIndex", required = false) Integer mainImageIndex,
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
 
@@ -99,7 +107,17 @@ public class ProductController {
         }
 
         try {
+            productService.syncProductUploadedImages(
+                    product,
+                    existingImageUrls,
+                    imageFiles,
+                    imagePositionXs,
+                    imagePositionYs,
+                    mainImageIndex
+            );
+
             productService.create(product, owner);
+
             return "redirect:/products";
         } catch (IllegalArgumentException e) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());
@@ -129,6 +147,11 @@ public class ProductController {
                                 @Valid @ModelAttribute("product") Product product,
                                 BindingResult bindingResult,
                                 @RequestParam(value = "supplierId", required = false) Long supplierId,
+                                @RequestParam(value = "existingImageUrls", required = false) List<String> existingImageUrls,
+                                @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles,
+                                @RequestParam(value = "imagePositionXs", required = false) List<Integer> imagePositionXs,
+                                @RequestParam(value = "imagePositionYs", required = false) List<Integer> imagePositionYs,
+                                @RequestParam(value = "mainImageIndex", required = false) Integer mainImageIndex,
                                 Model model) {
         authService.requireRole("OWNER", "STAFF");
 
@@ -150,7 +173,17 @@ public class ProductController {
         }
 
         try {
+            productService.syncProductUploadedImages(
+                    product,
+                    existingImageUrls,
+                    imageFiles,
+                    imagePositionXs,
+                    imagePositionYs,
+                    mainImageIndex
+            );
+
             productService.update(id, product, owner);
+
             return "redirect:/products";
         } catch (IllegalArgumentException e) {
             model.addAttribute("suppliers", supplierService.getAllSuppliers());

@@ -23,7 +23,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
-
+import dto.RangeReportDTO;
+import java.time.temporal.ChronoUnit;
 @Service
 public class OrderService {
 
@@ -49,6 +50,7 @@ public class OrderService {
         this.stockImportRepository = stockImportRepository;
         this.productService = productService;
         this.authService = authService;
+
     }
 
     private AppUser owner() {
@@ -697,6 +699,149 @@ public class OrderService {
         }
 
         return LocalDate.parse(value.toString());
+    }
+    @Transactional(readOnly = true)
+    public RangeReportDTO getRangeReport(LocalDate startDate, LocalDate endDate) {
+        AppUser ownerUser = owner();
+
+        LocalDate safeEndDate = endDate == null
+                ? LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                : endDate;
+
+        LocalDate safeStartDate = startDate == null
+                ? safeEndDate.minusDays(30)
+                : startDate;
+
+        if (safeStartDate.isAfter(safeEndDate)) {
+            LocalDate temp = safeStartDate;
+            safeStartDate = safeEndDate;
+            safeEndDate = temp;
+        }
+
+        LocalDateTime from = safeStartDate.atStartOfDay();
+        LocalDateTime to = safeEndDate.plusDays(1).atStartOfDay();
+
+        RangeReportDTO report = new RangeReportDTO();
+        report.setStartDate(safeStartDate);
+        report.setEndDate(safeEndDate);
+
+        report.setTotalOrders(orderRepository.countByUserAndDateRange(ownerUser, from, to));
+        report.setPendingOrders(orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_PENDING, from, to));
+        report.setShippingOrders(orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_SHIPPING, from, to));
+
+        long completed = orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_COMPLETED, from, to);
+        long delivered = orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_DELIVERED, from, to);
+        report.setCompletedOrders(completed + delivered);
+
+        report.setCancelledOrders(orderRepository.countByUserAndStatusAndDateRange(ownerUser, STATUS_CANCELLED, from, to));
+
+        BigDecimal revenue = orderRepository.sumRevenueByUserAndDateRange(ownerUser, from, to);
+        report.setRevenue(revenue == null ? BigDecimal.ZERO : revenue);
+
+        BigDecimal costOfGoods = orderItemRepository.sumCostOfGoodsByDateRange(ownerUser, from, to);
+        report.setCostOfGoods(costOfGoods == null ? BigDecimal.ZERO : costOfGoods);
+
+        report.setGrossProfit(report.getRevenue().subtract(report.getCostOfGoods()));
+
+        Long qtySold = orderItemRepository.sumQtySoldByDateRange(ownerUser, from, to);
+        report.setTotalItemsSold(qtySold == null ? 0 : qtySold);
+
+        BigDecimal importTotal = stockImportRepository.sumImportTotalByDateRange(ownerUser, from, to);
+        report.setImportTotal(importTotal == null ? BigDecimal.ZERO : importTotal);
+
+        Long qtyImported = stockImportRepository.sumImportQtyByDateRange(ownerUser, from, to);
+        report.setTotalItemsImported(qtyImported == null ? 0 : qtyImported);
+
+        List<DailyReportDTO.OrderSummary> orderSummaries = new ArrayList<>();
+        List<Order> orders = orderRepository.findByUserAndDateRange(ownerUser, from, to);
+
+        for (Order order : orders) {
+            orderSummaries.add(new DailyReportDTO.OrderSummary(
+                    order.getOrderCode(),
+                    order.getCustomerName(),
+                    order.getStatus(),
+                    order.getTotalBill(),
+                    order.getShippingFee()
+            ));
+        }
+
+        report.setOrderSummaries(orderSummaries);
+
+        List<DailyReportDTO.ProductSummary> productSummaries = new ArrayList<>();
+        List<Object[]> rows = orderItemRepository.findProductSummaryByDateRange(ownerUser, from, to);
+
+        for (Object[] row : rows) {
+            String productName = (String) row[0];
+            long quantity = row[1] == null ? 0 : ((Number) row[1]).longValue();
+            BigDecimal revenueValue = row[2] == null ? BigDecimal.ZERO : new BigDecimal(row[2].toString());
+            BigDecimal costValue = row[3] == null ? BigDecimal.ZERO : new BigDecimal(row[3].toString());
+            BigDecimal profitValue = row[4] == null ? BigDecimal.ZERO : new BigDecimal(row[4].toString());
+
+            productSummaries.add(new DailyReportDTO.ProductSummary(
+                    productName,
+                    quantity,
+                    revenueValue,
+                    costValue,
+                    profitValue
+            ));
+        }
+
+        report.setProductSummaries(productSummaries);
+
+        return report;
+    }
+    @Transactional(readOnly = true)
+    public List<DailyTrendDTO> getTrendByRange(LocalDate startDate, LocalDate endDate) {
+        AppUser ownerUser = owner();
+
+        LocalDate safeEndDate = endDate == null
+                ? LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                : endDate;
+
+        LocalDate safeStartDate = startDate == null
+                ? safeEndDate.minusDays(30)
+                : startDate;
+
+        if (safeStartDate.isAfter(safeEndDate)) {
+            LocalDate temp = safeStartDate;
+            safeStartDate = safeEndDate;
+            safeEndDate = temp;
+        }
+
+        LocalDateTime from = safeStartDate.atStartOfDay();
+        LocalDateTime to = safeEndDate.plusDays(1).atStartOfDay();
+
+        List<Object[]> rows = orderRepository.findDailyOrderRevenueTrend(ownerUser, from, to);
+
+        Map<LocalDate, DailyTrendDTO> resultMap = new LinkedHashMap<>();
+
+        long days = ChronoUnit.DAYS.between(safeStartDate, safeEndDate);
+
+        for (int i = 0; i <= days; i++) {
+            LocalDate currentDate = safeStartDate.plusDays(i);
+            resultMap.put(currentDate, new DailyTrendDTO(currentDate, 0, BigDecimal.ZERO));
+        }
+
+        if (rows != null) {
+            for (Object[] row : rows) {
+                if (row == null || row.length < 3 || row[0] == null) {
+                    continue;
+                }
+
+                LocalDate date = convertToLocalDate(row[0]);
+
+                if (date == null || !resultMap.containsKey(date)) {
+                    continue;
+                }
+
+                long orderCount = row[1] == null ? 0 : ((Number) row[1]).longValue();
+                BigDecimal revenue = row[2] == null ? BigDecimal.ZERO : new BigDecimal(row[2].toString());
+
+                resultMap.put(date, new DailyTrendDTO(date, orderCount, revenue));
+            }
+        }
+
+        return new ArrayList<>(resultMap.values());
     }
     public DailyReportDTO getDailyReport(LocalDate date) {
         AppUser ownerUser = owner();
