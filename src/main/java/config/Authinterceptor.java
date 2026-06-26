@@ -16,6 +16,8 @@ public class Authinterceptor implements HandlerInterceptor {
             "/css/",
             "/js/",
             "/images/",
+            "/img/",
+            "/uploads/",
             "/webjars/",
             "/favicon",
             "/error",
