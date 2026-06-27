@@ -27,15 +27,15 @@ public class Authinterceptor implements HandlerInterceptor {
             "/cart",
             "/checkout",
             "/order-success",
-
-            /*
-             * Cho phép toàn bộ khu vực khách hàng đi qua interceptor quản trị.
-             * Các trang /customer/account, /customer/orders...
-             * sẽ tự kiểm tra session khách hàng trong CustomerAccountController.
-             */
             "/customer",
 
-            "/api/auth/login"
+            "/api/auth/login",
+
+            /*
+             * API đăng nhập riêng cho Android.
+             * Các API mobile còn lại vẫn cần đăng nhập.
+             */
+            "/api/mobile/login"
     };
 
     @Override
