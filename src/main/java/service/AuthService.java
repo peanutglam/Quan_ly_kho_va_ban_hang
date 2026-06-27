@@ -16,11 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import repository.AppUserRepository;
 import repository.OrderRepository;
 import repository.ProductRepository;
 import repository.StockImportRepository;
 import repository.SupplierRepository;
-import repository.UserRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,14 +40,14 @@ public class AuthService {
     @Value("${app.owner.username:owner}")
     private String configuredOwnerUsername;
 
-    private final UserRepository userRepository;
+    private final AppUserRepository userRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final SupplierRepository supplierRepository;
     private final StockImportRepository stockImportRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository,
+    public AuthService(AppUserRepository userRepository,
                        ProductRepository productRepository,
                        OrderRepository orderRepository,
                        SupplierRepository supplierRepository,
@@ -481,13 +481,12 @@ public class AuthService {
             users.add(owner);
         }
 
-        for (AppUser user : userRepository.findByOwnerOrderByIdDesc(owner)) {
+        for (AppUser user : userRepository.findByOwnerAndActiveTrueOrderByIdDesc(owner)) {
             String role = normalizeRole(user.getRole());
 
             boolean isEmployee = AppUser.ROLE_STAFF.equals(role) || AppUser.ROLE_SALE.equals(role);
-            boolean isActive = !Boolean.FALSE.equals(user.getActive());
 
-            if (isEmployee && isActive) {
+            if (isEmployee) {
                 users.add(user);
             }
         }

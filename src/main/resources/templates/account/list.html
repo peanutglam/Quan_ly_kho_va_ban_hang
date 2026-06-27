@@ -18,7 +18,7 @@
       <h2>Quản lý tài khoản</h2>
       <p>
         Owner là tài khoản quản trị chính của cửa hàng.
-        Owner có quyền tạo và quản lý tài khoản nhân viên.
+        Owner có quyền tạo, quản lý và xóa mềm tài khoản nhân viên.
       </p>
     </div>
 
@@ -57,8 +57,8 @@
 
             <span th:if="${currentUser != null and currentUser.id == u.id}"
                   class="badge bg-info ms-1">
-                            Bạn
-                        </span>
+              Bạn
+            </span>
           </td>
 
           <td th:text="${u.username}">username</td>
@@ -72,44 +72,53 @@
           </td>
 
           <td>
-                        <span th:if="${u.ownerAccount}"
-                              class="badge bg-primary"
-                              th:text="${u.roleDisplayName}">
-                            Owner
-                        </span>
+            <span th:if="${u.ownerAccount}"
+                  class="badge bg-primary"
+                  th:text="${u.roleDisplayName}">
+              Owner
+            </span>
 
             <span th:unless="${u.ownerAccount}"
                   class="badge bg-secondary"
                   th:text="${u.roleDisplayName}">
-                            Nhân viên
-                        </span>
+              Nhân viên
+            </span>
           </td>
 
           <td>
-                        <span th:if="${u.active}" class="badge bg-success">
-                            Hoạt động
-                        </span>
+            <span th:if="${u.active}" class="badge bg-success">
+              Hoạt động
+            </span>
 
             <span th:unless="${u.active}" class="badge bg-danger">
-                            Đã khóa
-                        </span>
+              Đã khóa / đã xóa
+            </span>
           </td>
 
           <td class="text-end">
-                        <span th:if="${u.ownerAccount}" class="text-muted small">
-                            Tài khoản chính
-                        </span>
+            <span th:if="${u.ownerAccount}" class="text-muted small">
+              Tài khoản chính
+            </span>
 
-            <form th:if="${!u.ownerAccount}"
-                  th:action="@{/account/delete/{id}(id=${u.id})}"
-                  method="post"
-                  class="d-inline"
-                  onsubmit="return confirm('Bạn chắc chắn muốn khóa tài khoản nhân viên này?');">
+            <div th:unless="${u.ownerAccount}" class="d-inline-flex gap-2 justify-content-end">
 
-              <button type="submit" class="btn btn-sm btn-danger">
-                Khóa tài khoản
-              </button>
-            </form>
+              <form th:action="@{/account/delete/{id}(id=${u.id})}"
+                    method="post"
+                    class="d-inline"
+                    onsubmit="return confirm('Bạn có chắc muốn xóa tài khoản nhân viên này không? Tài khoản sẽ bị khóa, không còn hiển thị trong danh sách và không thể đăng nhập nữa.');">
+
+                <button type="submit" class="btn btn-sm btn-danger">
+                  Xóa nhân viên
+                </button>
+              </form>
+
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${users == null or #lists.isEmpty(users)}">
+          <td colspan="8" class="text-center text-muted py-4">
+            Chưa có tài khoản nhân viên nào.
           </td>
         </tr>
         </tbody>
