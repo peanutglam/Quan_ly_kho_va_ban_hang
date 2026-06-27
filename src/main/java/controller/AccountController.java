@@ -66,7 +66,7 @@ public class AccountController {
                                  RedirectAttributes redirectAttributes) {
         try {
             authService.deleteEmployee(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã khóa/xóa tài khoản Employee khỏi web của bạn");
+            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa tài khoản nhân viên khỏi web của bạn");
         } catch (IllegalArgumentException | SecurityException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
