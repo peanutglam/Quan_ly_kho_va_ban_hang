@@ -51,7 +51,7 @@ public class AccountController {
                                  RedirectAttributes redirectAttributes) {
         try {
             authService.createEmployeeAccount(user, confirmPassword);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã tạo tài khoản Employee thành công");
+            redirectAttributes.addFlashAttribute("successMessage", "Đã tạo tài khoản nhân viên thành công");
             return "redirect:/account";
         } catch (IllegalArgumentException | SecurityException e) {
             model.addAttribute("errorMessage", e.getMessage());
@@ -66,7 +66,7 @@ public class AccountController {
                                  RedirectAttributes redirectAttributes) {
         try {
             authService.deleteEmployee(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa tài khoản nhân viên khỏi web của bạn");
+            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa tài khoản nhân viên khỏi danh sách quản lý.");
         } catch (IllegalArgumentException | SecurityException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
