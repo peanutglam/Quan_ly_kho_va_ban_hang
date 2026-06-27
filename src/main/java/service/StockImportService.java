@@ -3,6 +3,7 @@ package service;
 import entity.AppUser;
 import entity.Product;
 import entity.StockImport;
+import entity.InventoryLog;
 import entity.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,15 +20,18 @@ public class StockImportService {
     private final ProductService productService;
     private final SupplierService supplierService;
     private final AuthService authService;
+    private final InventoryLogService inventoryLogService;
 
     public StockImportService(StockImportRepository stockImportRepository,
                               ProductService productService,
                               SupplierService supplierService,
-                              AuthService authService) {
+                              AuthService authService,
+                              InventoryLogService inventoryLogService) {
         this.stockImportRepository = stockImportRepository;
         this.productService = productService;
         this.supplierService = supplierService;
         this.authService = authService;
+        this.inventoryLogService = inventoryLogService;
     }
 
     @Transactional(readOnly = true)
@@ -61,9 +65,22 @@ public class StockImportService {
         si.setExpiryDate(expiryDate);
         si.setNote(note);
         si.setUser(owner);
-        stockImportRepository.save(si);
+        StockImport savedImport = stockImportRepository.save(si);
 
-        productService.increaseStock(product, quantity, importPrice, expiryDate);
+        ProductService.StockChangeResult stockChange =
+                productService.increaseStock(product, quantity, importPrice, expiryDate);
+
+        inventoryLogService.log(
+                owner,
+                authService.getCurrentUser(),
+                stockChange.getProduct(),
+                InventoryLog.ACTION_IMPORT,
+                stockChange.getBeforeQuantity(),
+                stockChange.getAfterQuantity(),
+                "STOCK_IMPORT",
+                savedImport.getId(),
+                "Nhập hàng: " + stockChange.getProduct().getName() + " +" + quantity
+        );
     }
 
     public StockImport getById(Long id) {

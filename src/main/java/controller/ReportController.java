@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import service.OrderService;
+import service.AuthService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,9 +20,11 @@ import java.util.List;
 public class ReportController {
 
     private final OrderService orderService;
+    private final AuthService authService;
 
-    public ReportController(OrderService orderService) {
+    public ReportController(OrderService orderService, AuthService authService) {
         this.orderService = orderService;
+        this.authService = authService;
     }
 
     @GetMapping("/reports/daily")
@@ -40,6 +43,7 @@ public class ReportController {
 
             Model model
     ) {
+        authService.requireRole("OWNER");
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
 
         LocalDate selectedDate = date == null ? today : date;

@@ -33,6 +33,7 @@ public class StockImportController {
 
     @GetMapping
     public String listImports(Model model) {
+        authService.requireRole("OWNER", "STAFF");
         model.addAttribute("imports", stockImportService.getAllImports());
         return "imports/list";
     }

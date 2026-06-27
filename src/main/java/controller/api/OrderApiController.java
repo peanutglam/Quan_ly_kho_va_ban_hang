@@ -34,6 +34,7 @@ public class OrderApiController {
                                         @RequestParam(defaultValue = "") String status) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             Page<Order> orderPage = orderService.getOrdersPageForApi(owner, page, size, keyword, status);
@@ -56,6 +57,7 @@ public class OrderApiController {
     public ResponseEntity<?> getOrderDetail(@PathVariable Long id) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             Order order = orderService.getOrderDetailForApi(owner, id);
@@ -70,6 +72,7 @@ public class OrderApiController {
     public ResponseEntity<?> createOrder(@RequestBody CreateOrderApiRequest request) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             Order order = orderService.createOrderFromMobileApi(owner, request);
@@ -95,6 +98,7 @@ public class OrderApiController {
                                                @RequestBody(required = false) UpdateOrderStatusApiRequest request) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             String status = request == null ? "" : request.getStatus();

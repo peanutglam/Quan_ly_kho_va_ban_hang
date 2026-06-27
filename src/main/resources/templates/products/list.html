@@ -393,11 +393,12 @@
       </div>
 
       <div class="header-actions">
-        <a class="btn btn-primary" th:href="@{/products/create}">
+        <a th:if="${canManageProducts == true}" class="btn btn-primary" th:href="@{/products/create}">
           + Thêm sản phẩm
         </a>
 
-        <button type="button"
+        <button th:if="${isOwner == true}"
+                type="button"
                 class="btn btn-danger"
                 data-bs-toggle="modal"
                 data-bs-target="#deleteAllProductsModal">
@@ -629,12 +630,14 @@
 
           <td>
             <div class="action-group">
-              <a class="btn btn-sm btn-outline-primary"
+              <a th:if="${canManageProducts == true}"
+                 class="btn btn-sm btn-outline-primary"
                  th:href="@{/products/edit/{id}(id=${p.id})}">
                 Sửa
               </a>
 
-              <a class="btn btn-sm btn-outline-danger"
+              <a th:if="${canManageProducts == true}"
+                 class="btn btn-sm btn-outline-danger"
                  th:href="@{/products/delete/{id}(id=${p.id})}"
                  onclick="return confirm('Bạn có chắc muốn xóa/ẩn sản phẩm này không?');">
                 Xóa
@@ -679,7 +682,7 @@
   </section>
 </div>
 
-<div class="modal fade"
+<div th:if="${isOwner == true}" class="modal fade"
      id="deleteAllProductsModal"
      tabindex="-1"
      aria-labelledby="deleteAllProductsModalLabel"

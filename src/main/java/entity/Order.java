@@ -11,6 +11,12 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
 
+    public static final String STATUS_PENDING = "CHỜ_XÁC_NHẬN";
+    public static final String STATUS_SHIPPING = "ĐANG_GIAO";
+    public static final String STATUS_DELIVERED = "ĐÃ_GIAO";
+    public static final String STATUS_COMPLETED = "HOÀN_THÀNH";
+    public static final String STATUS_CANCELLED = "ĐÃ_HỦY";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,6 +32,14 @@ public class Order {
 
     @Column(name = "customer_address")
     private String customerAddress;
+
+    /*
+     * Tài khoản khách hàng đã đăng nhập.
+     * Có thể null với đơn khách đặt ẩn danh hoặc import từ Google Sheet.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_account_id")
+    private AppUser customerAccount;
 
     /*
      * Tổng tiền sản phẩm hoặc tổng bill cuối cùng.
@@ -60,7 +74,7 @@ public class Order {
     private BigDecimal remainingAmount = BigDecimal.ZERO;
 
     @Column(nullable = false)
-    private String status = "CHỜ_XÁC_NHẬN";
+    private String status = STATUS_PENDING;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -68,6 +82,9 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 
+    /*
+     * Owner của cửa hàng.
+     */
     @ManyToOne
     @JoinColumn(name = "user_id")
     private AppUser user;
@@ -79,7 +96,7 @@ public class Order {
         }
 
         if (status == null || status.isBlank()) {
-            status = "CHỜ_XÁC_NHẬN";
+            status = STATUS_PENDING;
         }
 
         recalculateMoneyFields();
@@ -124,7 +141,7 @@ public class Order {
     }
 
     public void setOrderCode(String orderCode) {
-        this.orderCode = orderCode;
+        this.orderCode = trim(orderCode);
     }
 
     public String getCustomerName() {
@@ -132,7 +149,7 @@ public class Order {
     }
 
     public void setCustomerName(String customerName) {
-        this.customerName = customerName;
+        this.customerName = trim(customerName);
     }
 
     public String getCustomerPhone() {
@@ -140,7 +157,7 @@ public class Order {
     }
 
     public void setCustomerPhone(String customerPhone) {
-        this.customerPhone = customerPhone;
+        this.customerPhone = trim(customerPhone);
     }
 
     public String getCustomerAddress() {
@@ -148,7 +165,15 @@ public class Order {
     }
 
     public void setCustomerAddress(String customerAddress) {
-        this.customerAddress = customerAddress;
+        this.customerAddress = trim(customerAddress);
+    }
+
+    public AppUser getCustomerAccount() {
+        return customerAccount;
+    }
+
+    public void setCustomerAccount(AppUser customerAccount) {
+        this.customerAccount = customerAccount;
     }
 
     public BigDecimal getTotalAmount() {
@@ -201,8 +226,20 @@ public class Order {
         return status;
     }
 
+    public String getStatusDisplayName() {
+        return status == null || status.isBlank() ? STATUS_PENDING : status;
+    }
+
     public void setStatus(String status) {
-        this.status = status;
+        this.status = trim(status);
+    }
+
+    public boolean isPending() {
+        return STATUS_PENDING.equals(status);
+    }
+
+    public boolean isCancelled() {
+        return STATUS_CANCELLED.equals(status);
     }
 
     public LocalDateTime getCreatedAt() {
@@ -214,7 +251,7 @@ public class Order {
     }
 
     public void setItems(List<OrderItem> items) {
-        this.items = items;
+        this.items = items == null ? new ArrayList<>() : items;
     }
 
     public AppUser getUser() {
@@ -223,5 +260,9 @@ public class Order {
 
     public void setUser(AppUser user) {
         this.user = user;
+    }
+
+    private String trim(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

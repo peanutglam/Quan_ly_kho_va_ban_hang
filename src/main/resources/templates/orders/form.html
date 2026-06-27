@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title th:text="${formTitle != null ? formTitle : 'Tạo đơn hàng'}">Tạo đơn hàng</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <link rel="stylesheet" th:href="@{/css/style.css}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -71,11 +72,18 @@
     }
   </style>
 </head>
+
 <body class="app-bg order-form-page">
 <div class="page-container page-wide">
+
   <div class="page-top-actions">
     <a class="btn btn-light btn-soft" th:href="@{/orders}">← Về danh sách</a>
-    <a th:if="${editMode}" class="btn btn-outline-primary" th:href="@{/orders/detail/{id}(id=${order.id})}">Xem chi tiết</a>
+
+    <a th:if="${editMode and order != null and order.id != null}"
+       class="btn btn-outline-primary"
+       th:href="@{/orders/detail/{id}(id=${order.id})}">
+      Xem chi tiết
+    </a>
   </div>
 
   <section class="page-card">
@@ -89,7 +97,10 @@
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
 
-    <form th:action="${editMode} ? @{/orders/edit/{id}(id=${order.id})} : @{/orders/create}" method="post" id="orderForm">
+    <form th:action="${editMode} ? @{/orders/edit/{id}(id=${order.id})} : @{/orders/create}"
+          method="post"
+          id="orderForm">
+
       <div class="form-section-title">Thông tin khách hàng</div>
 
       <div class="order-form-grid mb-4">
@@ -163,25 +174,55 @@
         </button>
       </div>
 
-      <div th:if="${#lists.isEmpty(products)}" class="alert alert-warning">
+      <div th:if="${products == null or #lists.isEmpty(products)}" class="alert alert-warning">
         Chưa có sản phẩm còn hoạt động để tạo đơn hàng.
       </div>
 
       <div id="orderLines">
+
+        <!-- Dòng sản phẩm khi sửa đơn hàng -->
         <div class="product-line"
              th:if="${editMode and order != null and order.items != null and !#lists.isEmpty(order.items)}"
-             th:each="item : ${order.items}">
+             th:each="item : ${order.items}"
+             th:attr="data-original-product-id=${item.product != null ? item.product.id : ''},
+                      data-original-quantity=${item.quantity != null ? item.quantity : 0}">
+
           <div>
             <select class="form-select product-select" name="productIds">
               <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+
+              <!-- Option này bắt buộc có để sản phẩm hiện tại của đơn luôn hiển thị -->
+              <option th:if="${item.product != null}"
+                      th:value="${item.product.id}"
+                      selected="selected"
+                      th:attr="data-price=${item.displayUnitPrice},
+                               data-stock=${item.product.inventoryQuantity != null ? item.product.inventoryQuantity : item.product.quantity}"
+                      th:text="${item.product.name
+                              + ' | Tồn hiện tại: '
+                              + (item.product.inventoryQuantity != null ? item.product.inventoryQuantity : item.product.quantity)
+                              + ' | Giá trong đơn: '
+                              + #numbers.formatDecimal(item.displayUnitPrice, 0, 'COMMA', 0, 'POINT')
+                              + ' đ'}">
+              </option>
+
+              <!-- Danh sách sản phẩm còn hoạt động, bỏ qua sản phẩm hiện tại để tránh bị trùng option -->
               <option th:each="p : ${products}"
+                      th:if="${item.product == null or p.id != item.product.id}"
                       th:value="${p.id}"
-                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
-                      th:selected="${item.product != null and item.product.id == p.id}"
-                      th:text="${p.name + ' | Tồn hiện tại: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+                      th:attr="data-price=${p.salePrice},
+                               data-stock=${p.inventoryQuantity}"
+                      th:text="${p.name
+                              + ' | Tồn hiện tại: '
+                              + p.inventoryQuantity
+                              + ' | Giá: '
+                              + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')
+                              + ' đ'}">
               </option>
             </select>
-            <small class="line-stock-hint">Tồn hiện tại sẽ được cộng lại số lượng cũ khi lưu chỉnh sửa.</small>
+
+            <small class="line-stock-hint">
+              Tồn hiện tại sẽ được cộng lại số lượng cũ khi lưu chỉnh sửa.
+            </small>
           </div>
 
           <div>
@@ -210,25 +251,47 @@
           </div>
         </div>
 
-        <div class="product-line" th:if="${!editMode or order == null or order.items == null or #lists.isEmpty(order.items)}">
+        <!-- Dòng sản phẩm khi tạo mới hoặc đơn không có item -->
+        <div class="product-line"
+             th:if="${!editMode or order == null or order.items == null or #lists.isEmpty(order.items)}"
+             data-original-product-id=""
+             data-original-quantity="0">
+
           <div>
             <select class="form-select product-select" name="productIds">
               <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+
               <option th:each="p : ${products}"
                       th:value="${p.id}"
-                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
-                      th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+                      th:attr="data-price=${p.salePrice},
+                               data-stock=${p.inventoryQuantity}"
+                      th:text="${p.name
+                              + ' | Tồn: '
+                              + p.inventoryQuantity
+                              + ' | Giá: '
+                              + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')
+                              + ' đ'}">
               </option>
             </select>
-            <small class="line-stock-hint">Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.</small>
+
+            <small class="line-stock-hint">
+              Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.
+            </small>
           </div>
 
           <div>
-            <input type="number" class="form-control quantity-input" name="quantities" min="1" placeholder="SL">
+            <input type="number"
+                   class="form-control quantity-input"
+                   name="quantities"
+                   min="1"
+                   placeholder="SL">
           </div>
 
           <div>
-            <input type="text" class="form-control unit-price-input" name="unitPrices" placeholder="Đơn giá">
+            <input type="text"
+                   class="form-control unit-price-input"
+                   name="unitPrices"
+                   placeholder="Đơn giá">
           </div>
 
           <div class="line-total-wrap">
@@ -242,25 +305,42 @@
       </div>
 
       <template id="orderLineTemplate">
-        <div class="product-line">
+        <div class="product-line" data-original-product-id="" data-original-quantity="0">
           <div>
             <select class="form-select product-select" name="productIds">
               <option value="" data-price="0" data-stock="0">Chọn sản phẩm</option>
+
               <option th:each="p : ${products}"
                       th:value="${p.id}"
-                      th:attr="data-price=${p.salePrice},data-stock=${p.inventoryQuantity}"
-                      th:text="${p.name + ' | Tồn: ' + p.inventoryQuantity + ' | Giá: ' + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT') + ' đ'}">
+                      th:attr="data-price=${p.salePrice},
+                               data-stock=${p.inventoryQuantity}"
+                      th:text="${p.name
+                              + ' | Tồn: '
+                              + p.inventoryQuantity
+                              + ' | Giá: '
+                              + #numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')
+                              + ' đ'}">
               </option>
             </select>
-            <small class="line-stock-hint">Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.</small>
+
+            <small class="line-stock-hint">
+              Chọn sản phẩm, nhập số lượng và có thể sửa đơn giá cho đơn này.
+            </small>
           </div>
 
           <div>
-            <input type="number" class="form-control quantity-input" name="quantities" min="1" placeholder="SL">
+            <input type="number"
+                   class="form-control quantity-input"
+                   name="quantities"
+                   min="1"
+                   placeholder="SL">
           </div>
 
           <div>
-            <input type="text" class="form-control unit-price-input" name="unitPrices" placeholder="Đơn giá">
+            <input type="text"
+                   class="form-control unit-price-input"
+                   name="unitPrices"
+                   placeholder="Đơn giá">
           </div>
 
           <div class="line-total-wrap">
@@ -296,9 +376,10 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit" th:disabled="${#lists.isEmpty(products)}">
+        <button class="btn btn-primary" type="submit">
           <span th:text="${editMode ? 'Lưu chỉnh sửa' : 'Lưu đơn hàng'}">Lưu đơn hàng</span>
         </button>
+
         <a class="btn btn-light btn-soft" th:href="@{/orders}">Hủy</a>
       </div>
     </form>
@@ -308,6 +389,7 @@
 <script>
   function parseMoney(value) {
     if (value === null || value === undefined) return 0;
+
     let raw = String(value).trim()
       .replaceAll('đ', '')
       .replaceAll(' ', '')
@@ -321,6 +403,7 @@
     }
 
     raw = raw.replaceAll('.', '');
+
     const number = Number(raw || 0);
     return Number.isFinite(number) ? number : 0;
   }
@@ -334,6 +417,10 @@
     const quantityInput = line.querySelector('.quantity-input');
     const unitPriceInput = line.querySelector('.unit-price-input');
     const removeButton = line.querySelector('.remove-line');
+
+    if (!select || !quantityInput || !unitPriceInput || !removeButton) {
+      return;
+    }
 
     select.addEventListener('change', () => {
       const selected = select.options[select.selectedIndex];
@@ -355,6 +442,7 @@
 
     removeButton.addEventListener('click', () => {
       const lines = document.querySelectorAll('.product-line');
+
       if (lines.length <= 1) {
         select.value = '';
         quantityInput.value = '';
@@ -362,6 +450,7 @@
       } else {
         line.remove();
       }
+
       updateOrderTotal();
     });
   }
@@ -372,16 +461,26 @@
     document.querySelectorAll('.product-line').forEach((line) => {
       const quantityInput = line.querySelector('.quantity-input');
       const unitPriceInput = line.querySelector('.unit-price-input');
+      const lineTotalInput = line.querySelector('.line-total');
+
+      if (!quantityInput || !unitPriceInput || !lineTotalInput) {
+        return;
+      }
+
       const quantity = parseInt(quantityInput.value || '0', 10);
       const unitPrice = parseMoney(unitPriceInput.value);
       const lineTotal = unitPrice * Math.max(quantity, 0);
 
-      line.querySelector('.line-total').value = formatMoney(lineTotal);
+      lineTotalInput.value = formatMoney(lineTotal);
       productTotal += lineTotal;
     });
 
-    const shipping = parseMoney(document.querySelector('[name="shippingFee"]').value);
-    const deposit = parseMoney(document.querySelector('[name="customerDeposit"]').value);
+    const shippingInput = document.querySelector('[name="shippingFee"]');
+    const depositInput = document.querySelector('[name="customerDeposit"]');
+
+    const shipping = parseMoney(shippingInput ? shippingInput.value : 0);
+    const deposit = parseMoney(depositInput ? depositInput.value : 0);
+
     const remaining = Math.max(productTotal - deposit, 0);
 
     document.getElementById('orderTotal').textContent = formatMoney(productTotal);
@@ -390,15 +489,84 @@
     document.getElementById('remainingPreview').textContent = formatMoney(remaining);
   }
 
+  function buildOriginalQuantityMap() {
+    const map = new Map();
+
+    document.querySelectorAll('.product-line').forEach((line) => {
+      const productId = line.dataset.originalProductId || '';
+      const quantity = parseInt(line.dataset.originalQuantity || '0', 10) || 0;
+
+      if (productId && quantity > 0) {
+        map.set(productId, (map.get(productId) || 0) + quantity);
+      }
+    });
+
+    return map;
+  }
+
+  function validateStockBeforeSubmit() {
+    const originalMap = buildOriginalQuantityMap();
+    const selectedMap = new Map();
+    const stockMap = new Map();
+    const nameMap = new Map();
+
+    document.querySelectorAll('.product-line').forEach((line) => {
+      const select = line.querySelector('.product-select');
+      const quantityInput = line.querySelector('.quantity-input');
+
+      if (!select || !select.value) {
+        return;
+      }
+
+      const option = select.options[select.selectedIndex];
+      const productId = String(select.value);
+      const quantity = parseInt(quantityInput.value || '0', 10) || 0;
+      const stock = parseInt(option ? option.dataset.stock || '0' : '0', 10) || 0;
+      const name = option ? option.textContent.split('|')[0].trim() : 'Sản phẩm';
+
+      if (quantity > 0) {
+        selectedMap.set(productId, (selectedMap.get(productId) || 0) + quantity);
+        stockMap.set(productId, stock);
+        nameMap.set(productId, name);
+      }
+    });
+
+    for (const [productId, quantity] of selectedMap.entries()) {
+      const available = (stockMap.get(productId) || 0) + (originalMap.get(productId) || 0);
+
+      if (quantity > available) {
+        alert(
+          'Sản phẩm "' + (nameMap.get(productId) || '') +
+          '" chỉ còn ' + available +
+          ' sản phẩm trong kho, không thể xuất ' + quantity + '.'
+        );
+
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   document.querySelectorAll('.product-line').forEach(bindLineEvents);
-  document.querySelectorAll('.money-input').forEach((element) => element.addEventListener('input', updateOrderTotal));
+  document.querySelectorAll('.money-input').forEach((element) => {
+    element.addEventListener('input', updateOrderTotal);
+  });
 
   document.getElementById('btnAddLine').addEventListener('click', () => {
     const template = document.getElementById('orderLineTemplate');
     const clone = template.content.firstElementChild.cloneNode(true);
+
     document.getElementById('orderLines').appendChild(clone);
+
     bindLineEvents(clone);
     updateOrderTotal();
+  });
+
+  document.getElementById('orderForm').addEventListener('submit', (event) => {
+    if (!validateStockBeforeSubmit()) {
+      event.preventDefault();
+    }
   });
 
   updateOrderTotal();

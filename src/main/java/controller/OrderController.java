@@ -48,6 +48,7 @@ public class OrderController {
                              @RequestParam(value = "status", required = false) String status,
                              @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                              Model model) {
+        authService.requireRole("OWNER", "SALE");
         Page<Order> orderPage = orderService.filterOrdersPaged(keyword, status, page, 30);
 
         BigDecimal grandTotal = orderPage.getContent()
@@ -167,6 +168,7 @@ public class OrderController {
 
     @GetMapping("/detail/{id}")
     public String orderDetail(@PathVariable Long id, Model model) {
+        authService.requireRole("OWNER", "SALE");
         model.addAttribute("order", orderService.getById(id));
         model.addAttribute("shopProfile", shopProfileService.getCurrentProfile());
         return "orders/detail";

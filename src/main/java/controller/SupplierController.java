@@ -23,6 +23,7 @@ public class SupplierController {
 
     @GetMapping
     public String listSuppliers(Model model) {
+        authService.requireRole("OWNER", "STAFF");
         model.addAttribute("suppliers", supplierService.getAllSuppliers());
         return "suppliers/list";
     }

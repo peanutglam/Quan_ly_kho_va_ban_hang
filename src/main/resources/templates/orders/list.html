@@ -211,11 +211,12 @@
       </div>
 
       <div class="header-actions">
-        <a class="btn btn-primary" th:href="@{/orders/create}">
+        <a th:if="${canManageOrders == true}" class="btn btn-primary" th:href="@{/orders/create}">
           + Tạo đơn hàng
         </a>
 
-        <a class="btn btn-danger"
+        <a th:if="${isOwner == true}"
+           class="btn btn-danger"
            th:href="@{/orders/delete-all}"
            onclick="return confirm('Xóa toàn bộ đơn hàng? Tồn kho của các đơn chưa hủy sẽ được hoàn lại.');">
           Xóa toàn bộ
@@ -349,12 +350,14 @@
                 Xem
               </a>
 
-              <a class="btn btn-sm btn-outline-secondary"
+              <a th:if="${canManageOrders == true}"
+                 class="btn btn-sm btn-outline-secondary"
                  th:href="@{/orders/edit/{id}(id=${o.id})}">
                 Sửa
               </a>
 
-              <a class="btn btn-sm btn-outline-danger"
+              <a th:if="${isOwner == true}"
+                 class="btn btn-sm btn-outline-danger"
                  th:href="@{/orders/delete/{id}(id=${o.id})}"
                  onclick="return confirm('Xóa đơn hàng này? Tồn kho sẽ được hoàn lại nếu đơn chưa hủy.');">
                 Xóa

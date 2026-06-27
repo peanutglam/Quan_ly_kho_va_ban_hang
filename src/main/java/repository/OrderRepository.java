@@ -9,107 +9,175 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
     Page<Order> findByUserOrderByIdDesc(AppUser user, Pageable pageable);
+
     List<Order> findByUserOrderByIdDesc(AppUser user);
 
     @EntityGraph(attributePaths = {"items", "items.product"})
     Optional<Order> findByIdAndUser(Long id, AppUser user);
 
+    @EntityGraph(attributePaths = {"items", "items.product"})
+    Optional<Order> findByIdAndCustomerAccount(Long id, AppUser customerAccount);
+
+    @EntityGraph(attributePaths = {"items", "items.product"})
+    Optional<Order> findByIdAndUserAndCustomerAccount(Long id, AppUser user, AppUser customerAccount);
+
+    Page<Order> findByCustomerAccountOrderByIdDesc(AppUser customerAccount, Pageable pageable);
+
+    Page<Order> findByUserAndCustomerAccountOrderByIdDesc(AppUser user, AppUser customerAccount, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items", "items.product"})
+    @Query("""
+            SELECT DISTINCT o
+            FROM Order o
+            WHERE o.user = :owner
+              AND (
+                    o.customerAccount = :customer
+                    OR (
+                        :phone <> ''
+                        AND o.customerPhone IS NOT NULL
+                        AND o.customerPhone = :phone
+                    )
+                  )
+            ORDER BY o.id DESC
+            """)
+    Page<Order> findCustomerOrders(@Param("owner") AppUser owner,
+                                   @Param("customer") AppUser customer,
+                                   @Param("phone") String phone,
+                                   Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items", "items.product"})
+    @Query("""
+            SELECT DISTINCT o
+            FROM Order o
+            WHERE o.id = :id
+              AND o.user = :owner
+              AND (
+                    o.customerAccount = :customer
+                    OR (
+                        :phone <> ''
+                        AND o.customerPhone IS NOT NULL
+                        AND o.customerPhone = :phone
+                    )
+                  )
+            """)
+    Optional<Order> findCustomerOrderDetail(@Param("id") Long id,
+                                            @Param("owner") AppUser owner,
+                                            @Param("customer") AppUser customer,
+                                            @Param("phone") String phone);
+
     long countByUser(AppUser user);
+
+    long countByCustomerAccount(AppUser customerAccount);
+
+    long countByUserAndCustomerAccount(AppUser user, AppUser customerAccount);
 
     long countByUserAndStatus(AppUser user, String status);
 
     boolean existsByOrderCode(String orderCode);
+
     @Query("""
-        SELECT COUNT(o.id)
-        FROM Order o
-        WHERE o.user = :user
-          AND o.createdAt >= :start
-          AND o.createdAt < :end
-          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
-        """)
+            SELECT COUNT(o.id)
+            FROM Order o
+            WHERE o.user = :user
+              AND o.createdAt >= :start
+              AND o.createdAt < :end
+              AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+            """)
     Long countOrdersByDateRange(@Param("user") AppUser user,
                                 @Param("start") LocalDateTime start,
                                 @Param("end") LocalDateTime end);
 
     @Query("""
-        SELECT COUNT(o.id)
-        FROM Order o
-        WHERE o.user = :user
-          AND o.status = :status
-          AND o.createdAt >= :start
-          AND o.createdAt < :end
-        """)
+            SELECT COUNT(o.id)
+            FROM Order o
+            WHERE o.user = :user
+              AND o.status = :status
+              AND o.createdAt >= :start
+              AND o.createdAt < :end
+            """)
     Long countOrdersByStatusAndDateRange(@Param("user") AppUser user,
                                          @Param("status") String status,
                                          @Param("start") LocalDateTime start,
                                          @Param("end") LocalDateTime end);
 
     @Query("""
-        SELECT COALESCE(SUM(COALESCE(o.totalBill, o.totalAmount, 0)), 0)
-        FROM Order o
-        WHERE o.user = :user
-          AND (
-                o.status = 'ĐÃ_GIAO'
-                OR o.status = 'HOÀN_THÀNH'
-              )
-          AND o.createdAt >= :start
-          AND o.createdAt < :end
-        """)
+            SELECT COALESCE(SUM(COALESCE(o.totalBill, o.totalAmount, 0)), 0)
+            FROM Order o
+            WHERE o.user = :user
+              AND (
+                    o.status = 'ĐÃ_GIAO'
+                    OR o.status = 'HOÀN_THÀNH'
+                  )
+              AND o.createdAt >= :start
+              AND o.createdAt < :end
+            """)
     BigDecimal sumRevenueByDateRange(@Param("user") AppUser user,
                                      @Param("start") LocalDateTime start,
                                      @Param("end") LocalDateTime end);
 
     @Query("""
-        SELECT 
-            o.orderCode,
-            o.customerName,
-            o.status,
-            COALESCE(o.totalBill, o.totalAmount, 0),
-            o.createdAt
-        FROM Order o
-        WHERE o.user = :user
-          AND o.createdAt >= :start
-          AND o.createdAt < :end
-          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
-        ORDER BY o.createdAt DESC
-        """)
+            SELECT COALESCE(SUM(COALESCE(o.totalBill, o.totalAmount, 0)), 0)
+            FROM Order o
+            WHERE o.user = :user
+              AND o.customerAccount = :customer
+              AND (
+                    o.status = 'ĐÃ_GIAO'
+                    OR o.status = 'HOÀN_THÀNH'
+                  )
+            """)
+    BigDecimal sumRevenueByUserAndCustomer(@Param("user") AppUser user,
+                                           @Param("customer") AppUser customer);
+
+    @Query("""
+            SELECT 
+                o.orderCode,
+                o.customerName,
+                o.status,
+                COALESCE(o.totalBill, o.totalAmount, 0),
+                o.createdAt
+            FROM Order o
+            WHERE o.user = :user
+              AND o.createdAt >= :start
+              AND o.createdAt < :end
+              AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+            ORDER BY o.createdAt DESC
+            """)
     List<Object[]> findOrderSummaryByDateRange(@Param("user") AppUser user,
                                                @Param("start") LocalDateTime start,
                                                @Param("end") LocalDateTime end);
 
     @Query("""
-        SELECT 
-            FUNCTION('DATE', o.createdAt),
-            COUNT(o.id),
-            COALESCE(SUM(
-                CASE
-                    WHEN o.status = 'ĐÃ_GIAO' OR o.status = 'HOÀN_THÀNH'
-                    THEN COALESCE(o.totalBill, o.totalAmount, 0)
-                    ELSE 0
-                END
-            ), 0)
-        FROM Order o
-        WHERE o.user = :user
-          AND o.createdAt >= :start
-          AND o.createdAt < :end
-          AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
-        GROUP BY FUNCTION('DATE', o.createdAt)
-        ORDER BY FUNCTION('DATE', o.createdAt) ASC
-        """)
-
-  
+            SELECT 
+                FUNCTION('DATE', o.createdAt),
+                COUNT(o.id),
+                COALESCE(SUM(
+                    CASE
+                        WHEN o.status = 'ĐÃ_GIAO' OR o.status = 'HOÀN_THÀNH'
+                        THEN COALESCE(o.totalBill, o.totalAmount, 0)
+                        ELSE 0
+                    END
+                ), 0)
+            FROM Order o
+            WHERE o.user = :user
+              AND o.createdAt >= :start
+              AND o.createdAt < :end
+              AND (o.status IS NULL OR o.status <> 'ĐÃ_HỦY')
+            GROUP BY FUNCTION('DATE', o.createdAt)
+            ORDER BY FUNCTION('DATE', o.createdAt) ASC
+            """)
     List<Object[]> findDailyOrderRevenueTrend(@Param("user") AppUser user,
                                               @Param("start") LocalDateTime start,
                                               @Param("end") LocalDateTime end);
+
     @Query("""
             SELECT DISTINCT o FROM Order o
             WHERE o.user = :user

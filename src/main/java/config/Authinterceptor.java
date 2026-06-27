@@ -13,6 +13,7 @@ public class Authinterceptor implements HandlerInterceptor {
     private static final String[] PUBLIC_PREFIXES = {
             "/login",
             "/register",
+
             "/css/",
             "/js/",
             "/images/",
@@ -27,6 +28,13 @@ public class Authinterceptor implements HandlerInterceptor {
             "/checkout",
             "/order-success",
 
+            /*
+             * Cho phép toàn bộ khu vực khách hàng đi qua interceptor quản trị.
+             * Các trang /customer/account, /customer/orders...
+             * sẽ tự kiểm tra session khách hàng trong CustomerAccountController.
+             */
+            "/customer",
+
             "/api/auth/login"
     };
 
@@ -37,7 +45,9 @@ public class Authinterceptor implements HandlerInterceptor {
         String uri = request.getRequestURI();
 
         for (String prefix : PUBLIC_PREFIXES) {
-            if (uri.equals(prefix) || uri.startsWith(prefix + "/") || uri.startsWith(prefix + "?")) {
+            if (uri.equals(prefix)
+                    || uri.startsWith(prefix + "/")
+                    || uri.startsWith(prefix + "?")) {
                 return true;
             }
         }

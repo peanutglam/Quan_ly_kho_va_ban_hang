@@ -9,14 +9,18 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import service.AuthService;
+import service.CustomerAccountService;
 
 @Controller
 public class AuthController {
 
     private final AuthService authService;
+    private final CustomerAccountService customerAccountService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          CustomerAccountService customerAccountService) {
         this.authService = authService;
+        this.customerAccountService = customerAccountService;
     }
 
     @GetMapping("/login")
@@ -25,8 +29,9 @@ public class AuthController {
         disableCache(response);
 
         HttpSession session = request.getSession(false);
+
         if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return redirectAfterLogin();
+            return redirectAfterAdminLogin();
         }
 
         return "auth/login";
@@ -41,21 +46,28 @@ public class AuthController {
 
         try {
             authService.login(username, password);
-            return redirectAfterLogin();
+            return redirectAfterAdminLogin();
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             return "auth/login";
         }
     }
 
+    /*
+     * Trang đăng nhập khách hàng.
+     * Không được kiểm tra AuthService.SESSION_USER_ID ở đây,
+     * vì nếu session cũ còn USER_ID nhưng không có CUSTOMER_USER_ID
+     * sẽ gây vòng lặp /customer/login <-> /customer/account.
+     */
     @GetMapping("/customer/login")
     public String customerLoginForm(HttpServletRequest request,
                                     HttpServletResponse response) {
         disableCache(response);
 
         HttpSession session = request.getSession(false);
-        if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return redirectAfterLogin();
+
+        if (session != null && session.getAttribute(CustomerAccountService.SESSION_CUSTOMER_ID) != null) {
+            return "redirect:/customer/account";
         }
 
         return "auth/customer-login";
@@ -64,21 +76,43 @@ public class AuthController {
     @PostMapping("/customer/login")
     public String customerLogin(@RequestParam(required = false) String username,
                                 @RequestParam(required = false) String password,
+                                HttpServletRequest request,
                                 HttpServletResponse response,
                                 Model model) {
         disableCache(response);
 
         try {
-            authService.login(username, password);
-            return redirectAfterLogin();
+            AppUser customer = customerAccountService.login(username, password);
+
+            HttpSession session = request.getSession(true);
+
+            /*
+             * Xóa session quản trị cũ nếu có.
+             * Khách hàng dùng session riêng CUSTOMER_USER_ID.
+             */
+            session.removeAttribute(AuthService.SESSION_USER_ID);
+
+            customerAccountService.saveCustomerToSession(request, customer);
+
+            return "redirect:/customer/account";
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
+            return "auth/customer-login";
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Đăng nhập thất bại: " + e.getMessage());
             return "auth/customer-login";
         }
     }
 
     @GetMapping("/customer/register")
-    public String customerRegisterForm(Model model) {
+    public String customerRegisterForm(HttpServletRequest request,
+                                       Model model) {
+        HttpSession session = request.getSession(false);
+
+        if (session != null && session.getAttribute(CustomerAccountService.SESSION_CUSTOMER_ID) != null) {
+            return "redirect:/customer/account";
+        }
+
         if (!model.containsAttribute("user")) {
             model.addAttribute("user", new AppUser());
         }
@@ -89,17 +123,61 @@ public class AuthController {
     @PostMapping("/customer/register")
     public String customerRegister(@ModelAttribute("user") AppUser user,
                                    @RequestParam String confirmPassword,
+                                   HttpServletRequest request,
                                    Model model,
                                    RedirectAttributes redirectAttributes) {
         try {
-            authService.registerCustomer(user, confirmPassword);
-            redirectAttributes.addFlashAttribute("successMessage", "Đăng ký tài khoản mua hàng thành công. Bạn có thể đăng nhập ngay.");
-            return "redirect:/customer/login";
+            String rawPassword = user.getPassword();
+
+            if (rawPassword == null || rawPassword.isBlank()) {
+                throw new IllegalArgumentException("Mật khẩu không được để trống.");
+            }
+
+            if (confirmPassword == null || !confirmPassword.equals(rawPassword)) {
+                throw new IllegalArgumentException("Mật khẩu xác nhận không khớp.");
+            }
+
+            AppUser savedCustomer = customerAccountService.register(
+                    user.getFullName(),
+                    user.getUsername(),
+                    rawPassword,
+                    user.getEmail(),
+                    user.getPhone(),
+                    user.getAddress()
+            );
+
+            HttpSession session = request.getSession(true);
+            session.removeAttribute(AuthService.SESSION_USER_ID);
+
+            customerAccountService.saveCustomerToSession(request, savedCustomer);
+
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
+                    "Đăng ký tài khoản mua hàng thành công."
+            );
+
+            return "redirect:/customer/account";
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("user", user);
             return "auth/customer-register";
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Đăng ký thất bại: " + e.getMessage());
+            model.addAttribute("user", user);
+            return "auth/customer-register";
         }
+    }
+
+    @GetMapping("/customer/logout")
+    public String customerLogout(HttpServletRequest request,
+                                 HttpServletResponse response,
+                                 RedirectAttributes redirectAttributes) {
+        customerAccountService.logout(request);
+        disableCache(response);
+
+        redirectAttributes.addFlashAttribute("successMessage", "Đã đăng xuất tài khoản khách hàng.");
+
+        return "redirect:/shop";
     }
 
     @GetMapping("/register")
@@ -126,16 +204,18 @@ public class AuthController {
     public String logout(HttpServletRequest request,
                          HttpServletResponse response) {
         authService.logout(request, response);
+        customerAccountService.logout(request);
         disableCache(response);
 
         return "redirect:/shop";
     }
 
-    private String redirectAfterLogin() {
+    private String redirectAfterAdminLogin() {
         try {
             AppUser user = authService.getCurrentUser();
+
             if (user != null && AppUser.ROLE_CUSTOMER.equalsIgnoreCase(normalizeRole(user.getRole()))) {
-                return "redirect:/shop";
+                return "redirect:/customer/account";
             }
         } catch (Exception ignored) {
         }
@@ -149,6 +229,7 @@ public class AuthController {
         }
 
         String value = role.trim().toUpperCase();
+
         return value.startsWith("ROLE_") ? value.substring(5) : value;
     }
 

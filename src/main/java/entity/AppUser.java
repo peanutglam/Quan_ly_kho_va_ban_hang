@@ -2,6 +2,9 @@ package entity;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 @Entity
 @Table(name = "app_users")
 public class AppUser {
@@ -39,6 +42,7 @@ public class AppUser {
     /*
      * OWNER: owner = null
      * EMPLOYEE: owner trỏ tới tài khoản OWNER đã tạo nhân viên đó
+     * CUSTOMER: owner trỏ tới OWNER của cửa hàng mà khách đăng ký
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
@@ -49,6 +53,31 @@ public class AppUser {
      */
     @Column(nullable = false)
     private Boolean active = true;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        }
+
+        if (active == null) {
+            active = true;
+        }
+
+        role = normalizeRole(role);
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        role = normalizeRole(role);
+
+        if (active == null) {
+            active = true;
+        }
+    }
 
     public Long getId() {
         return id;
@@ -74,6 +103,10 @@ public class AppUser {
         return password;
     }
 
+    /*
+     * Không hiển thị mật khẩu thật cho Owner.
+     * Field password chỉ lưu chuỗi đã mã hóa.
+     */
     public void setPassword(String password) {
         this.password = password;
     }
@@ -126,16 +159,29 @@ public class AppUser {
         this.active = active == null ? true : active;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     public boolean isOwnerAccount() {
         return ROLE_OWNER.equals(normalizeRole(role));
     }
 
+    public boolean isCustomerAccount() {
+        return ROLE_CUSTOMER.equals(normalizeRole(role));
+    }
+
     public boolean isEmployeeAccount() {
-        return !isOwnerAccount();
+        String normalizedRole = normalizeRole(role);
+        return ROLE_STAFF.equals(normalizedRole) || ROLE_SALE.equals(normalizedRole);
     }
 
     public AppUser getWorkspaceOwner() {
-        return isOwnerAccount() ? this : owner;
+        if (isOwnerAccount()) {
+            return this;
+        }
+
+        return owner;
     }
 
     public String getRoleDisplayName() {
@@ -146,6 +192,10 @@ public class AppUser {
             case ROLE_CUSTOMER -> "Khách hàng";
             default -> role;
         };
+    }
+
+    public String getPasswordDisplayText() {
+        return password == null || password.isBlank() ? "Chưa có mật khẩu" : "Đã mã hóa";
     }
 
     private String normalizeRole(String rawRole) {

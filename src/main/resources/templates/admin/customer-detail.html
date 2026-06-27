@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết khách hàng</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="app-bg">
+<div class="page-container page-wide">
+    <section class="page-card">
+        <div class="page-top-actions mb-3">
+            <a class="btn btn-light btn-soft" th:href="@{/admin/customers}">← Danh sách khách hàng</a>
+        </div>
+
+        <h2 class="fw-bold">Chi tiết khách hàng</h2>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Họ tên</span>
+                    <strong th:text="${customer.fullName}">Tên</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Tên đăng nhập</span>
+                    <strong th:text="${customer.username}">username</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Vai trò</span>
+                    <strong th:text="${customer.roleDisplayName}">Khách hàng</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Email</span>
+                    <strong th:text="${customer.email != null ? customer.email : '-'}">-</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Số điện thoại</span>
+                    <strong th:text="${customer.phone != null ? customer.phone : '-'}">-</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Mật khẩu</span>
+                    <strong th:text="${customer.passwordDisplayText}">Đã mã hóa</strong>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="summary-strip">
+                    <span>Địa chỉ</span>
+                    <strong th:text="${customer.address != null ? customer.address : '-'}">-</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Trạng thái</span>
+                    <strong th:text="${customer.active == true ? 'Đang hoạt động' : 'Đã khóa'}">Đang hoạt động</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Số đơn đã đặt</span>
+                    <strong th:text="${orderCount}">0</strong>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="summary-strip">
+                    <span>Tổng tiền đã mua</span>
+                    <strong th:text="${#numbers.formatDecimal(totalSpent, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <form method="post" th:action="@{/admin/customers/{id}/reset-password(id=${customer.id})}">
+                    <label class="form-label">Đặt lại mật khẩu khách hàng</label>
+                    <div class="input-group">
+                        <input class="form-control" name="newPassword" placeholder="Nhập mật khẩu mới, tối thiểu 6 ký tự" required minlength="6">
+                        <button class="btn btn-outline-primary" type="submit">Đặt lại</button>
+                    </div>
+                    <small class="text-muted">Owner không xem mật khẩu cũ, chỉ có thể đặt lại mật khẩu mới.</small>
+                </form>
+            </div>
+
+            <div class="col-md-6">
+                <form method="post" th:action="@{/admin/customers/{id}/toggle-active(id=${customer.id})}">
+                    <label class="form-label">Trạng thái tài khoản</label>
+                    <button class="btn btn-outline-danger d-block" type="submit"
+                            th:text="${customer.active == true ? 'Khóa tài khoản khách hàng' : 'Mở khóa tài khoản khách hàng'}">
+                        Khóa tài khoản
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <h4 class="fw-bold">Lịch sử đơn hàng của khách</h4>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Ngày đặt</th>
+                    <th>Khách hàng</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr th:if="${orders == null or #lists.isEmpty(orders)}">
+                    <td colspan="5" class="text-center text-muted py-4">Khách hàng chưa có đơn nào.</td>
+                </tr>
+
+                <tr th:each="o : ${orders}">
+                    <td><b th:text="${o.orderCode}">ORD001</b></td>
+                    <td th:text="${o.createdAt != null ? #temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                    <td th:text="${o.customerName != null ? o.customerName : '-'}">-</td>
+                    <td th:text="${#numbers.formatDecimal(o.totalBill, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                    <td><span class="badge bg-light text-dark border" th:text="${o.statusDisplayName}">Trạng thái</span></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

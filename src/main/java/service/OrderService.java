@@ -7,6 +7,7 @@ import entity.AppUser;
 import entity.Order;
 import entity.OrderItem;
 import entity.Product;
+import entity.InventoryLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,17 +40,20 @@ public class OrderService {
     private final StockImportRepository stockImportRepository;
     private final ProductService productService;
     private final AuthService authService;
+    private final InventoryLogService inventoryLogService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         StockImportRepository stockImportRepository,
                         ProductService productService,
-                        AuthService authService) {
+                        AuthService authService,
+                        InventoryLogService inventoryLogService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.stockImportRepository = stockImportRepository;
         this.productService = productService;
         this.authService = authService;
+        this.inventoryLogService = inventoryLogService;
 
     }
 
@@ -159,7 +163,10 @@ public class OrderService {
             total = total.add(item.getSubtotal() == null ? BigDecimal.ZERO : item.getSubtotal());
             validLineCount++;
 
-            productService.decreaseStockForSale(product, quantity);
+            ProductService.StockChangeResult stockChange = productService.decreaseStockForSale(product, quantity);
+            logStockChange(owner, safeCurrentUser(), stockChange.getProduct(), InventoryLog.ACTION_ORDER_CREATE,
+                    stockChange.getBeforeQuantity(), stockChange.getAfterQuantity(), "ORDER", null,
+                    "Tạo đơn mobile: " + stockChange.getProduct().getName() + " -" + quantity);
         }
 
         if (validLineCount == 0) {
@@ -423,7 +430,10 @@ public class OrderService {
             BigDecimal costPrice = money(product.getImportPrice());
 
             if (!STATUS_CANCELLED.equals(status)) {
-                productService.decreaseStockForSale(product, quantity);
+                ProductService.StockChangeResult stockChange = productService.decreaseStockForSale(product, quantity);
+                logStockChange(ownerUser, safeCurrentUser(), stockChange.getProduct(), InventoryLog.ACTION_ORDER_CREATE,
+                        stockChange.getBeforeQuantity(), stockChange.getAfterQuantity(), "ORDER", order.getId(),
+                        "Tạo/cập nhật đơn: " + stockChange.getProduct().getName() + " -" + quantity);
             }
 
             OrderItem item = new OrderItem();
@@ -550,7 +560,10 @@ public class OrderService {
 
             total = total.add(item.getSubtotal() == null ? BigDecimal.ZERO : item.getSubtotal());
 
-            productService.decreaseStockForSale(product, quantity);
+            ProductService.StockChangeResult stockChange = productService.decreaseStockForSale(product, quantity);
+            logStockChange(ownerUser, null, stockChange.getProduct(), InventoryLog.ACTION_ORDER_CREATE,
+                    stockChange.getBeforeQuantity(), stockChange.getAfterQuantity(), "PUBLIC_ORDER", order.getId(),
+                    "Khách đặt hàng public: " + stockChange.getProduct().getName() + " -" + quantity);
         }
 
         if (order.getItems().isEmpty()) {
@@ -936,7 +949,12 @@ public class OrderService {
             }
 
             try {
-                productService.restoreStockFromSale(item.getProduct(), quantity);
+                Product product = item.getProduct();
+                ProductService.StockChangeResult stockChange = productService.restoreStockFromSale(product, quantity);
+                logStockChange(order.getUser(), safeCurrentUser(), stockChange.getProduct(), InventoryLog.ACTION_ORDER_CANCEL,
+                        stockChange.getBeforeQuantity(), stockChange.getAfterQuantity(), "ORDER", order.getId(),
+                        "Hoàn tồn do hủy/xóa đơn " + safeOrderCode(order) + ": "
+                                + stockChange.getProduct().getName() + " +" + quantity);
             } catch (Exception ignored) {
             }
         }
@@ -958,7 +976,40 @@ public class OrderService {
                 continue;
             }
 
-            productService.decreaseStockForSale(item.getProduct(), quantity);
+            Product product = item.getProduct();
+            ProductService.StockChangeResult stockChange = productService.decreaseStockForSale(product, quantity);
+            logStockChange(order.getUser(), safeCurrentUser(), stockChange.getProduct(), InventoryLog.ACTION_ORDER_REOPEN,
+                    stockChange.getBeforeQuantity(), stockChange.getAfterQuantity(), "ORDER", order.getId(),
+                    "Trừ tồn khi mở lại đơn " + safeOrderCode(order) + ": "
+                            + stockChange.getProduct().getName() + " -" + quantity);
         }
     }
+
+    private void logStockChange(AppUser owner,
+                                AppUser actor,
+                                Product product,
+                                String actionType,
+                                Integer beforeQuantity,
+                                Integer afterQuantity,
+                                String referenceType,
+                                Long referenceId,
+                                String description) {
+        if (owner == null) {
+            owner = owner();
+        }
+        inventoryLogService.log(owner, actor, product, actionType, beforeQuantity, afterQuantity, referenceType, referenceId, description);
+    }
+
+    private AppUser safeCurrentUser() {
+        try {
+            return authService.getCurrentUser();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String safeOrderCode(Order order) {
+        return order == null || order.getOrderCode() == null ? "" : order.getOrderCode();
+    }
+
 }

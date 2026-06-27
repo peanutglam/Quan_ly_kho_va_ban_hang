@@ -62,6 +62,80 @@ public class GlobalModelAttribute {
         }
     }
 
+
+    @ModelAttribute("isStockStaff")
+    public boolean isStockStaff() {
+        return safePermission(() -> authService.hasRole(AppUser.ROLE_STAFF));
+    }
+
+    @ModelAttribute("isSaleStaff")
+    public boolean isSaleStaff() {
+        return safePermission(() -> authService.hasRole(AppUser.ROLE_SALE));
+    }
+
+    @ModelAttribute("canViewProducts")
+    public boolean canViewProducts() {
+        return safePermission(authService::canViewProducts);
+    }
+
+    @ModelAttribute("canManageProducts")
+    public boolean canManageProducts() {
+        return safePermission(authService::canManageProducts);
+    }
+
+    @ModelAttribute("canManageOrders")
+    public boolean canManageOrders() {
+        return safePermission(authService::canManageOrders);
+    }
+
+    @ModelAttribute("canManageSuppliers")
+    public boolean canManageSuppliers() {
+        return safePermission(authService::canManageSuppliers);
+    }
+
+    @ModelAttribute("canManageImports")
+    public boolean canManageImports() {
+        return safePermission(authService::canManageImports);
+    }
+
+    @ModelAttribute("canInventoryCheck")
+    public boolean canInventoryCheck() {
+        return safePermission(authService::canInventoryCheck);
+    }
+
+    @ModelAttribute("canViewInventoryLogs")
+    public boolean canViewInventoryLogs() {
+        return safePermission(authService::canViewInventoryLogs);
+    }
+
+    @ModelAttribute("canViewReports")
+    public boolean canViewReports() {
+        return safePermission(authService::canViewReports);
+    }
+
+    @ModelAttribute("canManageShopConfig")
+    public boolean canManageShopConfig() {
+        return safePermission(authService::canManageShopConfig);
+    }
+
+    @ModelAttribute("canManageAccounts")
+    public boolean canManageAccounts() {
+        return safePermission(authService::canManageAccounts);
+    }
+
+    private boolean safePermission(BooleanSupplier supplier) {
+        try {
+            return supplier.getAsBoolean();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @FunctionalInterface
+    private interface BooleanSupplier {
+        boolean getAsBoolean();
+    }
+
     private boolean isOwnerRole(String role) {
         String value = normalize(role);
         return "OWNER".equals(value) || "ADMIN".equals(value);
