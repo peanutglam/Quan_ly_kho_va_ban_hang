@@ -31,6 +31,7 @@ public class ProductApiController {
                                           @RequestParam(required = false) String keyword) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "STAFF", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             Page<Product> productPage = productService.filterProductsPage(
@@ -59,6 +60,7 @@ public class ProductApiController {
     public ResponseEntity<?> detail(@PathVariable Long id) {
         try {
             AppUser currentUser = authService.getCurrentUser();
+            authService.requireRole("OWNER", "STAFF", "SALE");
             AppUser owner = authService.getWorkspaceOwner(currentUser);
 
             Product product = productService.getById(id, owner);

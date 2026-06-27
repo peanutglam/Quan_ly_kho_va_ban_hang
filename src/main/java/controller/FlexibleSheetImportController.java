@@ -4,6 +4,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import service.FlexibleSheetImportService;
+import service.AuthService;
 
 import java.util.List;
 
@@ -12,13 +13,16 @@ import java.util.List;
 public class FlexibleSheetImportController {
 
     private final FlexibleSheetImportService service;
+    private final AuthService authService;
 
-    public FlexibleSheetImportController(FlexibleSheetImportService service) {
+    public FlexibleSheetImportController(FlexibleSheetImportService service, AuthService authService) {
         this.service = service;
+        this.authService = authService;
     }
 
     @GetMapping("/flex-import")
     public String showImportPage() {
+        authService.requireRole("OWNER", "STAFF");
         return "sheet/import";
     }
 
@@ -27,6 +31,7 @@ public class FlexibleSheetImportController {
                             @RequestParam String gid,
                             @RequestParam String type,
                             Model model) {
+        authService.requireRole("OWNER", "STAFF");
         try {
             List<String> headers = service.readHeaders(sheetUrl, gid);
 
@@ -60,6 +65,7 @@ public class FlexibleSheetImportController {
                                 @RequestParam(required = false, defaultValue = "") String supplierColumn,
                                 @RequestParam(required = false, defaultValue = "") String expiryDateColumn,
                                 Model model) {
+        authService.requireRole("OWNER", "STAFF");
         try {
             int count = service.importProducts(
                     sheetUrl,
@@ -98,6 +104,7 @@ public class FlexibleSheetImportController {
                               @RequestParam(required = false, defaultValue = "") String customerDepositColumn,
                               @RequestParam(required = false, defaultValue = "") String statusColumn,
                               Model model) {
+        authService.requireRole("OWNER", "STAFF");
         try {
             int count = service.importOrders(
                     sheetUrl,

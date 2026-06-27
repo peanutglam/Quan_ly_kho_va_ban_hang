@@ -40,6 +40,7 @@ public class ProductController {
                                @RequestParam(value = "expiryStatus", required = false) String expiryStatus,
                                @RequestParam(value = "page", required = false, defaultValue = "0") int page,
                                Model model) {
+        authService.requireRole("OWNER", "STAFF", "SALE");
 
         AppUser owner = authService.getWorkspaceOwner();
 

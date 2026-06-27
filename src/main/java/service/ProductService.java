@@ -3,6 +3,7 @@ package service;
 import entity.AppUser;
 import entity.Product;
 import entity.ProductImage;
+import entity.InventoryLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,15 +35,18 @@ public class ProductService {
     private final OrderItemRepository orderItemRepository;
     private final StockImportRepository stockImportRepository;
     private final AuthService authService;
+    private final InventoryLogService inventoryLogService;
 
     public ProductService(ProductRepository productRepository,
                           OrderItemRepository orderItemRepository,
                           StockImportRepository stockImportRepository,
-                          AuthService authService) {
+                          AuthService authService,
+                          InventoryLogService inventoryLogService) {
         this.productRepository = productRepository;
         this.orderItemRepository = orderItemRepository;
         this.stockImportRepository = stockImportRepository;
         this.authService = authService;
+        this.inventoryLogService = inventoryLogService;
     }
 
     @Transactional(readOnly = true)
@@ -181,7 +185,19 @@ public class ProductService {
         syncProductImagesFromCurrentImageUrl(product);
         product.recalculateInventoryFields();
 
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        inventoryLogService.log(
+                owner,
+                safeCurrentUser(),
+                saved,
+                InventoryLog.ACTION_PRODUCT_CREATE,
+                0,
+                saved.getQuantity(),
+                "PRODUCT",
+                saved.getId(),
+                "Thêm sản phẩm: " + saved.getName()
+        );
+        return saved;
     }
 
     @Transactional
@@ -191,6 +207,7 @@ public class ProductService {
         validateProduct(updatedProduct);
 
         Product existing = getById(id, owner);
+        int beforeQuantity = existing.getQuantity() == null ? 0 : existing.getQuantity();
 
         if (productRepository.existsByCodeAndUserAndActiveTrueAndIdNot(updatedProduct.getCode(), owner, id)) {
             throw new IllegalArgumentException("Mã sản phẩm đã tồn tại trong web của Owner này");
@@ -229,7 +246,19 @@ public class ProductService {
 
         existing.recalculateInventoryFields();
 
-        return productRepository.save(existing);
+        Product saved = productRepository.save(existing);
+        inventoryLogService.log(
+                owner,
+                safeCurrentUser(),
+                saved,
+                InventoryLog.ACTION_PRODUCT_UPDATE,
+                beforeQuantity,
+                saved.getQuantity(),
+                "PRODUCT",
+                saved.getId(),
+                "Cập nhật sản phẩm: " + saved.getName()
+        );
+        return saved;
     }
 
     @Transactional
@@ -431,8 +460,21 @@ public class ProductService {
 
         Product product = getById(id, owner);
 
+        int beforeQuantity = product.getQuantity() == null ? 0 : product.getQuantity();
         product.setActive(false);
-        productRepository.save(product);
+        Product saved = productRepository.save(product);
+
+        inventoryLogService.log(
+                owner,
+                safeCurrentUser(),
+                saved,
+                InventoryLog.ACTION_PRODUCT_DELETE,
+                beforeQuantity,
+                beforeQuantity,
+                "PRODUCT",
+                saved.getId(),
+                "Ẩn sản phẩm: " + saved.getName()
+        );
 
         return "Đã ẩn sản phẩm. Đơn hàng và phiếu nhập cũ vẫn được giữ an toàn.";
     }
@@ -449,53 +491,80 @@ public class ProductService {
     }
 
     @Transactional
-    public void increaseStock(Product product,
-                              int amount,
-                              BigDecimal importPrice,
-                              LocalDate expiryDate) {
+    public StockChangeResult increaseStock(Product product,
+                                           int amount,
+                                           BigDecimal importPrice,
+                                           LocalDate expiryDate) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Số lượng nhập phải lớn hơn 0");
         }
 
-        product.increaseStock(amount);
+        Product managedProduct = getManagedProduct(product);
+
+        int beforeQuantity = safeQuantity(managedProduct.getQuantity());
+
+        managedProduct.increaseStock(amount);
 
         if (importPrice != null) {
-            product.setImportPrice(importPrice);
+            managedProduct.setImportPrice(importPrice);
         }
 
         if (expiryDate != null) {
-            product.setExpiryDate(expiryDate);
+            managedProduct.setExpiryDate(expiryDate);
         }
 
-        productRepository.save(product);
+        managedProduct.recalculateInventoryFields();
+
+        Product savedProduct = productRepository.save(managedProduct);
+
+        int afterQuantity = safeQuantity(savedProduct.getQuantity());
+
+        return new StockChangeResult(savedProduct, beforeQuantity, afterQuantity);
     }
 
     @Transactional
-    public void decreaseStockForSale(Product product, int amount) {
+    public StockChangeResult decreaseStockForSale(Product product, int amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Số lượng bán phải lớn hơn 0");
         }
 
-        if (product.getQuantity() < amount) {
+        Product managedProduct = getManagedProduct(product);
+
+        int beforeQuantity = safeQuantity(managedProduct.getQuantity());
+
+        if (beforeQuantity < amount) {
             throw new IllegalArgumentException(
-                    "Sản phẩm '" + product.getName() + "' không đủ tồn kho, hiện còn " + product.getQuantity()
+                    "Sản phẩm '" + managedProduct.getName() + "' không đủ tồn kho, hiện còn "
+                            + beforeQuantity + ", không thể xuất " + amount
             );
         }
 
-        product.registerSale(amount);
+        managedProduct.registerSale(amount);
 
-        productRepository.save(product);
+        Product savedProduct = productRepository.save(managedProduct);
+
+        int afterQuantity = safeQuantity(savedProduct.getQuantity());
+
+        return new StockChangeResult(savedProduct, beforeQuantity, afterQuantity);
     }
 
     @Transactional
-    public void restoreStockFromSale(Product product, int amount) {
-        if (product == null || amount <= 0) {
-            return;
+    public StockChangeResult restoreStockFromSale(Product product, int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Số lượng hoàn tồn phải lớn hơn 0");
         }
 
-        product.restoreSale(amount);
+        Product managedProduct = getManagedProduct(product);
 
-        productRepository.save(product);
+        int beforeQuantity = safeQuantity(managedProduct.getQuantity());
+
+        managedProduct.restoreSale(amount);
+
+        Product savedProduct = productRepository.save(managedProduct);
+
+        int afterQuantity = safeQuantity(savedProduct.getQuantity());
+
+        return new StockChangeResult(savedProduct, beforeQuantity, afterQuantity);
     }
 
     @Transactional
@@ -585,18 +654,21 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<Product> getPublicProductsPage(String keyword,
                                                String category,
+                                               String prefix,
                                                boolean saleOnly,
                                                int page,
                                                int size) {
         int safePage = Math.max(page, 0);
-        int safeSize = 20;
+        int safeSize = size <= 0 ? 20 : Math.min(size, 60);
 
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : "";
         String safeCategory = StringUtils.hasText(category) ? category.trim() : "";
+        String safePrefix = StringUtils.hasText(prefix) ? prefix.trim() : "";
 
         return productRepository.searchPublicProductsPaged(
                 kw,
                 safeCategory,
+                safePrefix,
                 saleOnly,
                 LocalDate.now(),
                 PageRequest.of(safePage, safeSize)
@@ -658,6 +730,14 @@ public class ProductService {
         return authService.getWorkspaceOwner(user);
     }
 
+    private AppUser safeCurrentUser() {
+        try {
+            return authService.getCurrentUser();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void validateProduct(Product product) {
         if (product == null) {
             throw new IllegalArgumentException("Dữ liệu sản phẩm không hợp lệ");
@@ -687,4 +767,47 @@ public class ProductService {
 
         return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
+    private int safeQuantity(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private Product getManagedProduct(Product product) {
+        if (product == null || product.getId() == null) {
+            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
+        }
+
+        return productRepository.findById(product.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm"));
+    }
+
+    public static class StockChangeResult {
+        private final Product product;
+        private final int beforeQuantity;
+        private final int afterQuantity;
+        private final int quantityChange;
+
+        public StockChangeResult(Product product, int beforeQuantity, int afterQuantity) {
+            this.product = product;
+            this.beforeQuantity = beforeQuantity;
+            this.afterQuantity = afterQuantity;
+            this.quantityChange = afterQuantity - beforeQuantity;
+        }
+
+        public Product getProduct() {
+            return product;
+        }
+
+        public int getBeforeQuantity() {
+            return beforeQuantity;
+        }
+
+        public int getAfterQuantity() {
+            return afterQuantity;
+        }
+
+        public int getQuantityChange() {
+            return quantityChange;
+        }
+    }
+
 }

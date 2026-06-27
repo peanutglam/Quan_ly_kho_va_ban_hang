@@ -2,8 +2,9 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${shopProfile != null ? shopProfile.displayShopName + ' - Mua sắm' : 'Cửa hàng - Mua sắm'}">
-        Cửa hàng
+
+    <title th:text="${shopProfile != null and shopProfile.shopName != null ? shopProfile.shopName : 'Cửa hàng mỹ phẩm'}">
+        Cửa hàng mỹ phẩm
     </title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,460 +13,641 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        .shop-filter-summary {
+        body {
+            background: #fff4fa;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #29252f;
+        }
+
+        .shop-page {
+            min-height: 100vh;
+        }
+
+        .shop-container {
+            width: min(1320px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 60px;
+        }
+
+        .shop-hero {
+            background: linear-gradient(135deg, #fff, #ffeaf3);
+            border: 1px solid #f6cadb;
+            border-radius: 32px;
+            padding: 34px;
+            box-shadow: 0 18px 45px rgba(210, 93, 145, 0.12);
+            margin-bottom: 26px;
+        }
+
+        .shop-hero-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .shop-name {
+            font-size: 42px;
+            font-weight: 900;
+            margin: 0 0 8px;
+            color: #282530;
+            letter-spacing: -0.8px;
+        }
+
+        .shop-desc {
+            font-size: 17px;
+            color: #746474;
+            margin: 0;
+            max-width: 760px;
+            line-height: 1.6;
+        }
+
+        .shop-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .shop-actions a {
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            font-weight: 800;
+            border: 1px solid #f0bfd4;
+            background: #fff;
+            color: #b13d72;
+            transition: 0.2s ease;
+        }
+
+        .shop-actions a:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(186, 74, 121, 0.15);
+        }
+
+        .search-box {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+        }
+
+        .search-box input {
+            height: 56px;
+            border-radius: 999px;
+            border: 1px solid #f1c5d7;
+            padding: 0 22px;
+            font-size: 16px;
+            outline: none;
+            background: #fff;
+        }
+
+        .search-box input:focus {
+            border-color: #df6da3;
+            box-shadow: 0 0 0 4px rgba(223, 109, 163, 0.13);
+        }
+
+        .search-box button {
+            height: 56px;
+            border-radius: 999px;
+            border: none;
+            padding: 0 26px;
+            font-weight: 900;
+            background: #dc6aa2;
+            color: #fff;
+        }
+
+        .category-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 24px 0 22px;
+        }
+
+        .category-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            padding: 13px 20px;
+            border-radius: 999px;
+            border: 1px solid #efc1d5;
+            background: #fff;
+            color: #a43d6e;
+            font-weight: 900;
+            font-size: 16px;
+            transition: 0.2s ease;
+        }
+
+        .category-chip:hover {
+            color: #a43d6e;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(190, 79, 130, 0.13);
+        }
+
+        .category-chip.active {
+            background: #df6aa2;
+            color: #fff !important;
+            border-color: #df6aa2;
+            box-shadow: 0 10px 24px rgba(223, 106, 162, 0.26);
+        }
+
+        .shop-filter-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 14px;
             flex-wrap: wrap;
             margin-bottom: 20px;
-            color: #7b6b78;
-            font-weight: 700;
         }
 
-        .shop-pagination {
-            margin-top: 34px;
-            margin-bottom: 26px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .shop-pagination-list {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            padding: 10px 14px;
-            margin: 0;
-            list-style: none;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid #f2c8d9;
-            box-shadow: 0 14px 34px rgba(199, 87, 133, 0.10);
-        }
-
-        .shop-page-btn {
-            min-width: 42px;
-            height: 42px;
-            padding: 0 14px;
-            border-radius: 999px;
-            border: 1px solid #f1cddd;
-            background: #ffffff;
-            color: #a63f6b;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            font-weight: 850;
-            line-height: 1;
-            transition: 0.15s ease;
-        }
-
-        .shop-page-btn:hover {
-            background: #fff3f8;
-            color: #8e315a;
-            border-color: #e8a9c3;
-            transform: translateY(-1px);
-        }
-
-        .shop-page-btn.active {
-            color: #ffffff !important;
-            border-color: transparent !important;
-            box-shadow: 0 10px 22px rgba(216, 95, 145, 0.24);
-        }
-
-        .shop-page-btn.disabled {
-            opacity: 0.45;
-            pointer-events: none;
-            cursor: not-allowed;
-        }
-
-        .shop-page-btn.nav-btn {
-            min-width: auto;
-            padding-left: 18px;
-            padding-right: 18px;
+        .shop-count {
+            font-size: 18px;
+            color: #746474;
+            font-weight: 800;
         }
 
         .shop-filter-chip {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            padding: 9px 14px;
             border-radius: 999px;
-            padding: 8px 14px;
-            font-weight: 850;
-            font-size: 14px;
+            background: #fff3f8;
+            color: #a63f6b;
+            border: 1px solid #f2c8d9;
+            font-weight: 800;
         }
 
         .shop-reset-filter {
-            color: #a63f6b;
+            color: #c64b82;
             text-decoration: none;
-            font-weight: 850;
-            margin-left: 8px;
+            font-weight: 900;
+            margin-left: 6px;
         }
 
-        .shop-reset-filter:hover {
-            text-decoration: underline;
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 22px;
         }
 
-        .sale-badge-custom {
+        .product-card {
+            background: #fff;
+            border: 1px solid #f4cfe0;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 14px 36px rgba(188, 78, 128, 0.1);
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            transition: 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 46px rgba(188, 78, 128, 0.16);
+        }
+
+        .product-image-wrap {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #fff5fa;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: block;
+        }
+
+        .product-image-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .sale-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
             background: #e63972;
-            color: #ffffff;
+            color: #fff;
+            padding: 7px 12px;
             border-radius: 999px;
-            padding: 5px 10px;
             font-size: 13px;
-            font-weight: 850;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+            font-weight: 900;
+            box-shadow: 0 8px 18px rgba(230, 57, 114, 0.22);
         }
 
-        @media (max-width: 680px) {
-            .shop-pagination-list {
+        .product-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1.35;
+            color: #2f2a36;
+            margin: 0;
+            min-height: 48px;
+        }
+
+        .product-meta {
+            color: #8a7683;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .price-main {
+            color: #d64f88;
+            font-size: 22px;
+            font-weight: 950;
+        }
+
+        .price-old {
+            color: #9b8c96;
+            font-size: 14px;
+            text-decoration: line-through;
+            font-weight: 700;
+        }
+
+        .stock-text {
+            font-size: 14px;
+            color: #746474;
+            font-weight: 700;
+        }
+
+        .product-actions {
+            margin-top: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-detail,
+        .btn-cart {
+            border-radius: 16px;
+            padding: 11px 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 900;
+            border: none;
+            font-size: 14px;
+        }
+
+        .btn-detail {
+            background: #fff3f8;
+            color: #b13d72;
+            border: 1px solid #f4cadd;
+        }
+
+        .btn-cart {
+            background: #dc6aa2;
+            color: #fff;
+        }
+
+        .btn-cart:hover,
+        .btn-detail:hover {
+            opacity: 0.9;
+        }
+
+        .empty-box {
+            background: #fff;
+            border: 1px solid #f3cddf;
+            border-radius: 28px;
+            padding: 60px 24px;
+            text-align: center;
+            color: #7b6a76;
+            font-weight: 800;
+            font-size: 18px;
+        }
+
+        .pagination-wrap {
+            display: flex;
+            justify-content: center;
+            margin-top: 34px;
+        }
+
+        .pagination .page-link {
+            color: #c64b82;
+            border-color: #f0c7d8;
+            font-weight: 800;
+        }
+
+        .pagination .active .page-link {
+            background: #dc6aa2;
+            border-color: #dc6aa2;
+        }
+
+        @media (max-width: 1200px) {
+            .product-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 850px) {
+            .product-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .shop-name {
+                font-size: 34px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .shop-container {
+                width: min(100% - 20px, 1320px);
+                padding-top: 14px;
+            }
+
+            .shop-hero {
+                padding: 22px;
                 border-radius: 24px;
             }
 
-            .shop-page-btn {
-                min-width: 38px;
-                height: 38px;
-                padding: 0 12px;
-                font-size: 14px;
+            .search-box {
+                grid-template-columns: 1fr;
             }
 
-            .shop-page-btn.nav-btn {
-                padding-left: 14px;
-                padding-right: 14px;
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shop-actions {
+                width: 100%;
+            }
+
+            .shop-actions a {
+                flex: 1;
+                text-align: center;
             }
         }
     </style>
 </head>
 
-<body class="shop-page"
-      th:with="mainColor=${shopProfile != null ? shopProfile.displayThemeColor : '#dc6b98'}">
+<body>
+<div class="shop-page">
+    <div class="shop-container">
 
-<header class="shop-header">
-    <div class="shop-header-inner">
-        <a th:href="@{/shop}" class="shop-brand">
-            <span class="shop-brand-badge"
-                  th:style="'background:' + ${mainColor}">
-                🛍️
-            </span>
+        <section class="shop-hero">
+            <div class="shop-hero-top">
+                <div>
+                    <h1 class="shop-name"
+                        th:text="${shopProfile != null and shopProfile.shopName != null ? shopProfile.shopName : 'Cửa hàng mỹ phẩm'}">
+                        Cửa hàng mỹ phẩm
+                    </h1>
 
-            <span th:text="${shopProfile != null ? shopProfile.displayShopName : 'SmartInventory Store'}">
-                SmartInventory Store
-            </span>
-        </a>
-
-        <div class="shop-actions">
-            <span class="shop-action-btn" th:if="${isCustomer == true}">
-                👋 <span th:text="${currentUser.fullName}">Khách hàng</span>
-            </span>
-
-            <a th:href="@{/customer/login}" class="shop-action-btn" th:if="${currentUser == null}">
-                👤 Đăng nhập khách hàng
-            </a>
-
-            <a th:href="@{/logout}" class="shop-action-btn" th:if="${isCustomer == true}">
-                Đăng xuất
-            </a>
-
-            <a th:href="@{/cart}" class="shop-action-btn">
-                🛒 Giỏ hàng
-            </a>
-
-            <a th:href="@{/login}" class="shop-action-btn primary"
-               th:style="'background:' + ${mainColor}">
-                🔐 Quản trị cửa hàng
-            </a>
-        </div>
-    </div>
-</header>
-
-<section class="shop-hero"
-         th:style="${shopProfile != null and shopProfile.bannerImageUrl != null and !#strings.isEmpty(shopProfile.bannerImageUrl)}
-                   ? 'background: linear-gradient(135deg, rgba(220,107,152,.86), rgba(248,185,208,.82)), url(' + ${shopProfile.bannerImageUrl} + ') center/cover no-repeat;'
-                   : 'background: linear-gradient(135deg, ' + ${mainColor} + ', #f8b9d0);'">
-
-    <div class="container">
-        <h1 th:text="${shopProfile != null ? shopProfile.displayHeroTitle : 'Cửa hàng mỹ phẩm'}">
-            Cửa hàng mỹ phẩm
-        </h1>
-
-        <p th:text="${shopProfile != null ? shopProfile.displayHeroSubtitle : 'Khám phá sản phẩm đang có sẵn tại cửa hàng.'}">
-            Khám phá sản phẩm đang có sẵn tại cửa hàng.
-        </p>
-
-        <div th:if="${shopProfile != null and shopProfile.shopNotice != null and !#strings.isEmpty(shopProfile.shopNotice)}"
-             class="mx-auto mb-4 px-4 py-3 rounded-4"
-             style="max-width: 760px; background: rgba(255,255,255,.82); color: #7f3453; font-weight: 700;">
-            <span th:text="${shopProfile.shopNotice}">
-                Thông báo
-            </span>
-        </div>
-
-        <form th:action="@{/shop}" method="get" class="shop-search-form">
-            <input type="hidden"
-                   name="category"
-                   th:if="${selectedCategory != null and !#strings.isEmpty(selectedCategory)}"
-                   th:value="${selectedCategory}">
-
-            <input type="hidden"
-                   name="sale"
-                   th:if="${saleOnly == true}"
-                   value="true">
-
-            <input type="text"
-                   name="q"
-                   th:value="${keyword}"
-                   class="form-control"
-                   placeholder="Tìm sản phẩm, mã sản phẩm, thương hiệu...">
-
-            <button type="submit"
-                    class="btn btn-primary"
-                    th:style="'background:' + ${mainColor}">
-                Tìm
-            </button>
-        </form>
-
-        <div class="mt-3 small"
-             th:if="${shopProfile != null and shopProfile.phone != null and !#strings.isEmpty(shopProfile.phone)}">
-            Hotline:
-            <b th:text="${shopProfile.phone}">096...</b>
-        </div>
-    </div>
-</section>
-
-<main class="shop-container">
-
-    <div class="category-list">
-        <!-- FIX BUG:
-             Tất cả phải bỏ sale=true và bỏ category.
-             Chỉ giữ keyword nếu đang tìm kiếm.
-        -->
-        <a th:href="@{/shop(q=${keyword})}"
-           class="category-chip"
-           th:classappend="${(selectedCategory == null or #strings.isEmpty(selectedCategory)) and saleOnly != true} ? 'active' : ''"
-           th:style="${(selectedCategory == null or #strings.isEmpty(selectedCategory)) and saleOnly != true} ? 'background:' + ${mainColor} + '; color:white;' : ''">
-            Tất cả
-        </a>
-
-        <!-- Đang sale: chỉ thêm sale=true, không giữ category để tránh kẹt filter -->
-        <a th:href="@{/shop(q=${keyword}, sale=true)}"
-           class="category-chip"
-           th:classappend="${saleOnly == true} ? 'active' : ''"
-           th:style="${saleOnly == true} ? 'background:#e63972; color:white;' : ''">
-            🔥 Đang sale
-        </a>
-
-        <!-- Category: khi chọn danh mục thì bỏ sale=true -->
-        <a th:each="c : ${categories}"
-           th:href="@{/shop(q=${keyword}, category=${c})}"
-           class="category-chip"
-           th:classappend="${saleOnly != true and selectedCategory == c} ? 'active' : ''"
-           th:style="${saleOnly != true and selectedCategory == c} ? 'background:' + ${mainColor} + '; color:white;' : ''"
-           th:text="${c}">
-            Mỹ phẩm
-        </a>
-    </div>
-
-    <div class="shop-filter-summary">
-        <span>
-            <b th:text="${products != null ? #lists.size(products) : 0}">0</b>
-            /
-            <b th:text="${totalElements != null ? totalElements : 0}">0</b>
-            sản phẩm
-        </span>
-
-        <span th:if="${saleOnly == true}" class="shop-filter-chip" style="background:#e63972; color:white;">
-            🔥 Đang lọc: Sản phẩm sale
-            <a class="shop-reset-filter"
-               th:href="@{/shop(q=${keyword})}"
-               style="color:white;">
-                Bỏ lọc
-            </a>
-        </span>
-
-        <span th:if="${saleOnly != true and selectedCategory != null and !#strings.isEmpty(selectedCategory)}"
-              class="shop-filter-chip"
-              style="background:#fff3f8; color:#a63f6b; border:1px solid #f2c8d9;">
-            Danh mục:
-            <b th:text="${selectedCategory}">Mỹ phẩm</b>
-            <a class="shop-reset-filter"
-               th:href="@{/shop(q=${keyword})}">
-                Bỏ lọc
-            </a>
-        </span>
-    </div>
-
-    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
-    <div th:if="${warnMessage}" class="alert alert-warning" th:text="${warnMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-
-    <div th:if="${products == null or #lists.isEmpty(products)}"
-         class="empty-text text-center py-5">
-        <div style="font-size: 54px;">🛍️</div>
-        <h4 class="fw-bold mt-3">Chưa có sản phẩm phù hợp</h4>
-        <p class="mb-0">Bạn thử tìm bằng từ khóa khác hoặc quay lại sau nhé.</p>
-    </div>
-
-    <div class="product-grid"
-         th:if="${products != null and !#lists.isEmpty(products)}">
-
-        <div class="product-card" th:each="p : ${products}">
-
-            <a th:href="@{/shop/product/{id}(id=${p.id})}"
-               class="d-block mb-3">
-
-                <div th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}"
-                     style="height: 220px; border-radius: 22px; overflow: hidden; background: #fff0f6;">
-                    <img th:src="${p.imageUrl}"
-                         th:alt="${p.name}"
-                         style="width: 100%; height: 100%; object-fit: cover;"
-                         onerror="this.closest('div').style.display='none'">
+                    <p class="shop-desc"
+                       th:text="${shopProfile != null and shopProfile.thankYouMessage != null ? shopProfile.thankYouMessage : 'Chọn sản phẩm yêu thích và đặt hàng nhanh chóng.'}">
+                        Chọn sản phẩm yêu thích và đặt hàng nhanh chóng.
+                    </p>
                 </div>
 
-                <div th:if="${p.imageUrl == null or #strings.isEmpty(p.imageUrl)}"
-                     style="height: 220px; border-radius: 22px; display: grid; place-items: center; background: linear-gradient(135deg,#fff0f6,#ffe3ef); color: #c84f80; font-size: 56px;">
-                    🌸
+                <div class="shop-actions">
+                    <a th:href="@{/cart}">🛒 Giỏ hàng</a>
+
+                    <a th:if="${currentCustomer == null}"
+                       th:href="@{/customer/login}">
+                        👤 Đăng nhập
+                    </a>
+
+                    <a th:if="${currentCustomer != null}"
+                       th:href="@{/customer/account}">
+                        👤 Tài khoản của tôi
+                    </a>
+
+                    <a th:if="${currentCustomer != null}"
+                       th:href="@{/customer/logout}">
+                        🚪 Đăng xuất
+                    </a>
                 </div>
+            </div>
+
+            <form class="search-box" method="get" th:action="@{/shop}">
+                <input type="text"
+                       name="q"
+                       th:value="${keyword}"
+                       placeholder="Tìm sản phẩm theo tên, mã, thương hiệu...">
+
+                <button type="submit">Tìm kiếm</button>
+            </form>
+        </section>
+
+        <div class="category-list">
+            <a href="/shop"
+               class="category-chip"
+               th:classappend="${saleOnly != true
+                               and (selectedPrefix == null or #strings.isEmpty(selectedPrefix))
+                               and (selectedCategory == null or #strings.isEmpty(selectedCategory))} ? ' active' : ''">
+                Tất cả
             </a>
 
-            <div class="product-category"
-                 th:text="${p.category != null and !#strings.isEmpty(p.category) ? p.category : 'Mỹ phẩm'}">
-                Mỹ phẩm
-            </div>
-
-            <a th:href="@{/shop/product/{id}(id=${p.id})}"
-               class="product-name"
-               th:text="${p.name}">
-                Tên sản phẩm
+            <a href="/shop?sale=true"
+               class="category-chip"
+               th:classappend="${saleOnly == true} ? ' active' : ''">
+                🔥 Đang sale
             </a>
 
-            <div class="product-brand"
-                 th:if="${p.brand != null and !#strings.isEmpty(p.brand) and !#strings.equalsIgnoreCase(p.brand, 'Chưa xác định')}"
-                 th:text="${p.brand}">
-                Brand
+            <a href="/shop?prefix=Son"
+               class="category-chip"
+               th:classappend="${selectedPrefix == 'Son'} ? ' active' : ''">
+                Son
+            </a>
+
+            <a href="/shop?prefix=Ph%E1%BA%A5n"
+               class="category-chip"
+               th:classappend="${selectedPrefix == 'Phấn'} ? ' active' : ''">
+                Phấn
+            </a>
+
+            <a href="/shop?prefix=B%E1%BA%A3ng%20m%E1%BA%AFt"
+               class="category-chip"
+               th:classappend="${selectedPrefix == 'Bảng mắt'} ? ' active' : ''">
+                Bảng mắt
+            </a>
+
+
+        </div>
+
+        <div class="shop-filter-row">
+            <div class="shop-count">
+                <span th:text="${totalElements != null ? totalElements : 0}">0</span>
+                sản phẩm
             </div>
 
-            <div th:if="${p.promotionCurrentlyActive}" class="mt-2 mb-1">
-                <span class="sale-badge-custom">
-                    Sale
-                    <span th:text="${#numbers.formatDecimal(p.discountPercentDisplay, 0, 'COMMA', 0, 'POINT')} + '%'">
-                        0%
-                    </span>
+            <div class="d-flex flex-wrap gap-2">
+                <span th:if="${saleOnly == true}" class="shop-filter-chip">
+                    Đang lọc:
+                    <b>Đang sale</b>
+                    <a class="shop-reset-filter" href="/shop">Bỏ lọc</a>
+                </span>
+
+                <span th:if="${selectedPrefix != null and !#strings.isEmpty(selectedPrefix)}"
+                      class="shop-filter-chip">
+                    Nhóm sản phẩm:
+                    <b th:text="${selectedPrefix}">Son</b>
+                    <a class="shop-reset-filter" href="/shop">Bỏ lọc</a>
+                </span>
+
+                <span th:if="${keyword != null and !#strings.isEmpty(keyword)}"
+                      class="shop-filter-chip">
+                    Từ khóa:
+                    <b th:text="${keyword}">keyword</b>
+                    <a class="shop-reset-filter" href="/shop">Xóa</a>
                 </span>
             </div>
+        </div>
 
-            <div class="product-price" th:style="'color:' + ${mainColor}">
-                <span th:text="${#numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                    0 đ
-                </span>
-            </div>
+        <div th:if="${products == null or #lists.isEmpty(products)}" class="empty-box">
+            Không tìm thấy sản phẩm phù hợp.
+        </div>
 
-            <div th:if="${p.promotionCurrentlyActive}" class="text-muted small mb-2">
-                <span style="text-decoration: line-through;"
-                      th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
-                    0 đ
-                </span>
-            </div>
+        <div th:if="${products != null and !#lists.isEmpty(products)}" class="product-grid">
+            <div class="product-card" th:each="p : ${products}">
+                <a class="product-image-wrap" th:href="@{/shop/product/{id}(id=${p.id})}">
+                    <img th:if="${p.displayImageUrl != null and !#strings.isEmpty(p.displayImageUrl)}"
+                         th:src="${p.displayImageUrl}"
+                         alt="Ảnh sản phẩm">
 
-            <div class="stock-badge"
-                 th:text="${p.quantity != null and p.quantity > 0 ? 'Còn ' + p.quantity + ' sản phẩm' : 'Hết hàng'}">
-                Còn hàng
-            </div>
+                    <div th:if="${p.displayImageUrl == null or #strings.isEmpty(p.displayImageUrl)}"
+                         class="product-image-placeholder">
+                        <div class="flower-placeholder">🌸</div>
+                        <div class="placeholder-text">Chưa có ảnh</div>
+                    </div>
 
-            <div class="product-card-footer">
-                <form th:action="@{/cart/add}" method="post"
-                      th:if="${p.quantity != null and p.quantity > 0}">
-                    <input type="hidden" name="productId" th:value="${p.id}">
-                    <input type="hidden" name="quantity" value="1">
-
-                    <button type="submit"
-                            class="btn add-cart-btn"
-                            th:style="'background:' + ${mainColor}">
-                        🛒 Thêm giỏ
-                    </button>
-                </form>
-
-                <button class="btn btn-light" disabled
-                        th:if="${p.quantity == null or p.quantity <= 0}">
-                    Hết hàng
-                </button>
-
-                <a th:href="@{/shop/product/{id}(id=${p.id})}"
-                   class="btn btn-light btn-soft">
-                    Xem chi tiết
+                    <span class="sale-badge"
+                          th:if="${p.promotionCurrentlyActive == true}">
+        SALE
+    </span>
                 </a>
+
+                <div class="product-body">
+                    <h3 class="product-name" th:text="${p.name}">
+                        Tên sản phẩm
+                    </h3>
+
+                    <div class="product-meta">
+                        <div>
+                            <span th:text="${p.brand != null and !#strings.isEmpty(p.brand) ? p.brand : 'Chưa có thương hiệu'}">
+                                Thương hiệu
+                            </span>
+                        </div>
+
+                        <div>
+                            <span th:text="${p.category != null and !#strings.isEmpty(p.category) ? p.category : 'Chưa phân loại'}">
+                                Danh mục
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="price-row">
+                        <span class="price-main"
+                              th:text="${p.effectiveSalePrice != null ? #numbers.formatDecimal(p.effectiveSalePrice, 0, 'COMMA', 0, 'POINT') + ' đ' : '0 đ'}">
+                            0 đ
+                        </span>
+
+                        <span class="price-old"
+                              th:if="${p.promotionCurrentlyActive == true and p.salePrice != null and p.effectiveSalePrice != null and p.effectiveSalePrice < p.salePrice}"
+                              th:text="${#numbers.formatDecimal(p.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                            0 đ
+                        </span>
+                    </div>
+
+                    <div class="stock-text">
+                        Còn:
+                        <span th:text="${p.inventoryQuantity != null ? p.inventoryQuantity : p.quantity}">0</span>
+                        sản phẩm
+                    </div>
+
+                    <div class="product-actions">
+                        <a class="btn-detail"
+                           th:href="@{/shop/product/{id}(id=${p.id})}">
+                            Chi tiết
+                        </a>
+
+                        <form th:action="@{/cart/add}" method="post">
+                            <input type="hidden" name="productId" th:value="${p.id}">
+                            <input type="hidden" name="quantity" value="1">
+
+                            <button class="btn-cart w-100" type="submit">
+                                Thêm giỏ
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- FIX GIAO DIỆN PHÂN TRANG:
-         Không dùng ul/li để tránh lỗi hiện bullet dọc.
-    -->
-    <div class="shop-pagination" th:if="${totalPages != null and totalPages > 1}">
-        <div class="shop-pagination-list">
+        <div class="pagination-wrap"
+             th:if="${totalPages != null and totalPages > 1}">
+            <nav>
+                <ul class="pagination">
 
-            <a class="shop-page-btn nav-btn"
-               th:classappend="${currentPage == 0} ? ' disabled' : ''"
-               th:href="@{/shop(page=${currentPage - 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
-                Trước
-            </a>
+                    <!-- Về trang đầu -->
+                    <li class="page-item"
+                        th:classappend="${currentPage == 0} ? ' disabled' : ''">
+                        <a class="page-link"
+                           th:href="@{/shop(page=0, q=${keyword}, category=${selectedCategory}, prefix=${selectedPrefix}, sale=${saleOnly})}">
+                            &lt;&lt;
+                        </a>
+                    </li>
 
-            <a class="shop-page-btn"
-               th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-               th:if="${i >= currentPage - 2 and i <= currentPage + 2}"
-               th:classappend="${i == currentPage} ? ' active' : ''"
-               th:style="${i == currentPage} ? 'background:' + ${mainColor} + '; border-color:' + ${mainColor} : ''"
-               th:href="@{/shop(page=${i}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}"
-               th:text="${i + 1}">
-                1
-            </a>
+                    <!-- Về cụm trang trước -->
+                    <li class="page-item"
+                        th:classappend="${pageGroupStart == 0} ? ' disabled' : ''">
+                        <a class="page-link"
+                           th:href="@{/shop(page=${previousGroupPage}, q=${keyword}, category=${selectedCategory}, prefix=${selectedPrefix}, sale=${saleOnly})}">
+                            Trước
+                        </a>
+                    </li>
 
-            <a class="shop-page-btn nav-btn"
-               th:classappend="${currentPage + 1 >= totalPages} ? ' disabled' : ''"
-               th:href="@{/shop(page=${currentPage + 1}, q=${keyword}, category=${selectedCategory}, sale=${saleOnly})}">
-                Sau
-            </a>
+                    <!-- Hiển thị cụm 3 trang: 1 2 3 / 4 5 6 / 7 8 9... -->
+                    <li class="page-item"
+                        th:each="i : ${#numbers.sequence(pageGroupStart, pageGroupEnd)}"
+                        th:classappend="${i == currentPage} ? ' active' : ''">
+                        <a class="page-link"
+                           th:href="@{/shop(page=${i}, q=${keyword}, category=${selectedCategory}, prefix=${selectedPrefix}, sale=${saleOnly})}"
+                           th:text="${i + 1}">
+                            1
+                        </a>
+                    </li>
 
+                    <!-- Sang cụm trang tiếp theo -->
+                    <li class="page-item"
+                        th:classappend="${pageGroupEnd + 1 >= totalPages} ? ' disabled' : ''">
+                        <a class="page-link"
+                           th:href="@{/shop(page=${nextGroupPage}, q=${keyword}, category=${selectedCategory}, prefix=${selectedPrefix}, sale=${saleOnly})}">
+                            Sau
+                        </a>
+                    </li>
+
+                    <!-- Đến trang cuối -->
+                    <li class="page-item"
+                        th:classappend="${currentPage + 1 >= totalPages} ? ' disabled' : ''">
+                        <a class="page-link"
+                           th:href="@{/shop(page=${lastPage}, q=${keyword}, category=${selectedCategory}, prefix=${selectedPrefix}, sale=${saleOnly})}">
+                            &gt;&gt;
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
         </div>
+
     </div>
-
-</main>
-
-<footer class="shop-footer">
-    <div th:text="${shopProfile != null ? shopProfile.displayShopName : 'SmartInventory Store'}">
-        SmartInventory Store
-    </div>
-
-    <div class="mt-1"
-         th:if="${shopProfile != null and shopProfile.address != null and !#strings.isEmpty(shopProfile.address)}"
-         th:text="${shopProfile.address}">
-        Địa chỉ
-    </div>
-
-    <div class="mt-1"
-         th:if="${shopProfile != null and shopProfile.phone != null and !#strings.isEmpty(shopProfile.phone)}">
-        Hotline:
-        <b th:text="${shopProfile.phone}">096...</b>
-    </div>
-
-    <div class="mt-2 d-flex gap-2 justify-content-center flex-wrap">
-        <a th:if="${shopProfile != null and shopProfile.facebookUrl != null and !#strings.isEmpty(shopProfile.facebookUrl)}"
-           th:href="${shopProfile.facebookUrl}"
-           target="_blank"
-           class="btn btn-light btn-sm">
-            Facebook
-        </a>
-
-        <span th:if="${shopProfile != null and shopProfile.zaloPhone != null and !#strings.isEmpty(shopProfile.zaloPhone)}"
-              class="btn btn-light btn-sm"
-              th:text="'Zalo: ' + ${shopProfile.zaloPhone}">
-            Zalo
-        </span>
-    </div>
-</footer>
-
+</div>
 </body>
 </html>

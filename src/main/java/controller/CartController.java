@@ -4,18 +4,22 @@ import dto.CartItemDTO;
 import entity.AppUser;
 import entity.Order;
 import entity.Product;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import service.AuthService;
+import service.CustomerAccountService;
 import service.OrderService;
 import service.ProductService;
+import service.PublicOrderCustomerBinderService;
 import service.ShopProfileService;
 
-import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Controller
 public class CartController {
@@ -25,21 +29,25 @@ public class CartController {
     private final ProductService productService;
     private final OrderService orderService;
     private final ShopProfileService shopProfileService;
-    private final AuthService authService;
+    private final PublicOrderCustomerBinderService publicOrderCustomerBinderService;
+    private final CustomerAccountService customerAccountService;
 
     public CartController(ProductService productService,
                           OrderService orderService,
                           ShopProfileService shopProfileService,
-                          AuthService authService) {
+                          PublicOrderCustomerBinderService publicOrderCustomerBinderService,
+                          CustomerAccountService customerAccountService) {
         this.productService = productService;
         this.orderService = orderService;
         this.shopProfileService = shopProfileService;
-        this.authService = authService;
+        this.publicOrderCustomerBinderService = publicOrderCustomerBinderService;
+        this.customerAccountService = customerAccountService;
     }
 
     @GetMapping("/cart")
     public String viewCart(HttpSession session, Model model) {
         Map<Long, CartItemDTO> cart = getCart(session);
+
         BigDecimal total = cart.values().stream()
                 .map(CartItemDTO::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -47,6 +55,7 @@ public class CartController {
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
         model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
+
         return "cart/index";
     }
 
@@ -58,19 +67,24 @@ public class CartController {
         try {
             Product product = productService.getPublicProductById(productId);
 
-            if (product.getQuantity() <= 0) {
+            int currentStock = product.getQuantity() == null ? 0 : product.getQuantity();
+
+            if (currentStock <= 0) {
                 redirectAttrs.addFlashAttribute("errorMessage", "Sản phẩm đã hết hàng");
                 return "redirect:/shop";
             }
 
             Map<Long, CartItemDTO> cart = getCart(session);
-            CartItemDTO existing = cart.get(productId);
-            int newQty = (existing == null ? 0 : existing.getQuantity()) + Math.max(1, quantity);
-            int maxQty = product.getQuantity();
 
-            if (newQty > maxQty) {
-                newQty = maxQty;
-                redirectAttrs.addFlashAttribute("warnMessage", "Chỉ còn " + maxQty + " sản phẩm trong kho");
+            CartItemDTO existing = cart.get(productId);
+
+            int addQuantity = Math.max(1, quantity);
+            int newQuantity = (existing == null ? 0 : existing.getQuantity()) + addQuantity;
+            int maxQuantity = currentStock;
+
+            if (newQuantity > maxQuantity) {
+                newQuantity = maxQuantity;
+                redirectAttrs.addFlashAttribute("warnMessage", "Chỉ còn " + maxQuantity + " sản phẩm trong kho");
             }
 
             cart.put(productId, new CartItemDTO(
@@ -81,11 +95,12 @@ public class CartController {
                     product.getEffectiveSalePrice(),
                     product.isPromotionCurrentlyActive(),
                     product.getDiscountPercentDisplay(),
-                    newQty,
-                    maxQty
+                    newQuantity,
+                    maxQuantity
             ));
 
             session.setAttribute(CART_SESSION_KEY, cart);
+
             redirectAttrs.addFlashAttribute("successMessage", "Đã thêm vào giỏ hàng");
         } catch (Exception e) {
             redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
@@ -104,44 +119,57 @@ public class CartController {
             cart.remove(productId);
         } else {
             CartItemDTO item = cart.get(productId);
+
             if (item != null) {
-                int maxQty = item.getMaxStock();
-                item.setQuantity(Math.min(quantity, maxQty));
+                int maxQuantity = item.getMaxStock();
+                item.setQuantity(Math.min(quantity, maxQuantity));
             }
         }
 
         session.setAttribute(CART_SESSION_KEY, cart);
+
         return "redirect:/cart";
     }
 
     @PostMapping("/cart/remove")
-    public String removeFromCart(@RequestParam Long productId, HttpSession session) {
+    public String removeFromCart(@RequestParam Long productId,
+                                 HttpSession session) {
         Map<Long, CartItemDTO> cart = getCart(session);
+
         cart.remove(productId);
+
         session.setAttribute(CART_SESSION_KEY, cart);
+
         return "redirect:/cart";
     }
 
     @PostMapping("/cart/clear")
     public String clearCart(HttpSession session) {
         session.removeAttribute(CART_SESSION_KEY);
+
         return "redirect:/cart";
     }
 
     @GetMapping("/checkout")
-    public String checkoutForm(HttpSession session, Model model) {
+    public String checkoutForm(HttpSession session,
+                               HttpServletRequest request,
+                               Model model) {
         Map<Long, CartItemDTO> cart = getCart(session);
-        if (cart.isEmpty()) return "redirect:/shop";
+
+        if (cart.isEmpty()) {
+            return "redirect:/shop";
+        }
 
         BigDecimal total = cart.values().stream()
                 .map(CartItemDTO::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        AppUser currentCustomer = getCurrentCustomerSafely(request);
+
         model.addAttribute("cartItems", new ArrayList<>(cart.values()));
         model.addAttribute("cartTotal", total);
         model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
 
-        AppUser currentCustomer = getCurrentCustomerSafely();
         model.addAttribute("checkoutName", currentCustomer != null ? currentCustomer.getFullName() : "");
         model.addAttribute("checkoutPhone", currentCustomer != null ? currentCustomer.getPhone() : "");
         model.addAttribute("checkoutAddress", currentCustomer != null ? currentCustomer.getAddress() : "");
@@ -154,13 +182,18 @@ public class CartController {
                              @RequestParam String customerPhone,
                              @RequestParam(required = false) String customerAddress,
                              @RequestParam(required = false) String note,
+                             HttpServletRequest request,
                              HttpSession session,
                              RedirectAttributes redirectAttrs) {
         Map<Long, CartItemDTO> cart = getCart(session);
-        if (cart.isEmpty()) return "redirect:/shop";
+
+        if (cart.isEmpty()) {
+            return "redirect:/shop";
+        }
 
         try {
             Map<Long, Integer> items = new LinkedHashMap<>();
+
             for (CartItemDTO item : cart.values()) {
                 items.put(item.getProductId(), item.getQuantity());
             }
@@ -173,7 +206,15 @@ public class CartController {
                     items
             );
 
+            /*
+             * Bước 11:
+             * Nếu khách hàng đã đăng nhập thì gắn đơn vừa tạo với tài khoản khách.
+             * Nếu khách chưa đăng nhập thì đơn vẫn là đơn public bình thường.
+             */
+            order = publicOrderCustomerBinderService.bindCustomerToOrder(request, order);
+
             session.removeAttribute(CART_SESSION_KEY);
+
             return "redirect:/order-success?code=" + order.getOrderCode();
         } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("errorMessage", e.getMessage());
@@ -188,36 +229,29 @@ public class CartController {
     public String orderSuccess(@RequestParam String code, Model model) {
         model.addAttribute("orderCode", code);
         model.addAttribute("shopProfile", shopProfileService.getPublicProfile());
+
         return "cart/success";
     }
 
-    private AppUser getCurrentCustomerSafely() {
+    private AppUser getCurrentCustomerSafely(HttpServletRequest request) {
         try {
-            AppUser user = authService.getCurrentUser();
-            if (user != null && AppUser.ROLE_CUSTOMER.equalsIgnoreCase(normalizeRole(user.getRole()))) {
-                return user;
-            }
+            return customerAccountService.getCurrentCustomerOrNull(request);
         } catch (Exception ignored) {
+            return null;
         }
-
-        return null;
-    }
-
-    private String normalizeRole(String role) {
-        if (role == null || role.isBlank()) return "";
-        String value = role.trim().toUpperCase();
-        return value.startsWith("ROLE_") ? value.substring(5) : value;
     }
 
     @SuppressWarnings("unchecked")
     private Map<Long, CartItemDTO> getCart(HttpSession session) {
         Object cart = session.getAttribute(CART_SESSION_KEY);
-        if (cart instanceof Map<?, ?> m) {
-            return (Map<Long, CartItemDTO>) m;
+
+        if (cart instanceof Map<?, ?> map) {
+            return (Map<Long, CartItemDTO>) map;
         }
 
         Map<Long, CartItemDTO> newCart = new LinkedHashMap<>();
         session.setAttribute(CART_SESSION_KEY, newCart);
+
         return newCart;
     }
 }

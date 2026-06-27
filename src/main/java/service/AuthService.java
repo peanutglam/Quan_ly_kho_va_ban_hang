@@ -399,6 +399,58 @@ public class AuthService {
         }
     }
 
+    public boolean isOwner() {
+        return hasRole(AppUser.ROLE_OWNER);
+    }
+
+    public boolean isStockStaff() {
+        return hasRole(AppUser.ROLE_STAFF);
+    }
+
+    public boolean isSaleStaff() {
+        return hasRole(AppUser.ROLE_SALE);
+    }
+
+    public boolean canViewProducts() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF, AppUser.ROLE_SALE);
+    }
+
+    public boolean canManageProducts() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF);
+    }
+
+    public boolean canManageSuppliers() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF);
+    }
+
+    public boolean canManageImports() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF);
+    }
+
+    public boolean canManageOrders() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_SALE);
+    }
+
+    public boolean canViewReports() {
+        return hasRole(AppUser.ROLE_OWNER);
+    }
+
+    public boolean canManageShopConfig() {
+        return hasRole(AppUser.ROLE_OWNER);
+    }
+
+    public boolean canManageAccounts() {
+        return hasRole(AppUser.ROLE_OWNER);
+    }
+
+    public boolean canInventoryCheck() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF);
+    }
+
+    public boolean canViewInventoryLogs() {
+        return hasRole(AppUser.ROLE_OWNER, AppUser.ROLE_STAFF, AppUser.ROLE_SALE);
+    }
+
     @Transactional
     public void changePassword(String oldPassword,
                                String newPassword,

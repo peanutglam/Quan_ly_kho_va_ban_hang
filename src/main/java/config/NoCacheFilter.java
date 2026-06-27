@@ -33,6 +33,7 @@ public class NoCacheFilter extends OncePerRequestFilter {
                 || uri.startsWith("/js/")
                 || uri.startsWith("/images/")
                 || uri.startsWith("/img/")
+                || uri.startsWith("/uploads/")
                 || uri.startsWith("/webjars/")
                 || uri.endsWith(".css")
                 || uri.endsWith(".js")

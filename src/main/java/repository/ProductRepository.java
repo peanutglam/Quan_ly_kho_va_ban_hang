@@ -123,6 +123,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                     OR LOWER(p.category) = LOWER(:category)
                   )
               AND (
+                    :namePrefix = ''
+                    OR LOWER(p.name) LIKE LOWER(CONCAT(:namePrefix, '%'))
+                  )
+              AND (
                     :saleOnly = false
                     OR (
                         p.promotionEnabled = true
@@ -138,6 +142,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     Page<Product> searchPublicProductsPaged(@Param("kw") String kw,
                                             @Param("category") String category,
+                                            @Param("namePrefix") String namePrefix,
                                             @Param("saleOnly") boolean saleOnly,
                                             @Param("today") LocalDate today,
                                             Pageable pageable);

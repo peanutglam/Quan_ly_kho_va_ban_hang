@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import repository.SupplierRepository;
 
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -23,29 +22,27 @@ public class SupplierService {
 
     @Transactional(readOnly = true)
     public List<Supplier> getAllSuppliers() {
-        return supplierRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(Supplier::getId, Comparator.nullsLast(Long::compareTo)).reversed())
-                .toList();
+        AppUser owner = authService.getWorkspaceOwner();
+        return supplierRepository.findByUserOrderByIdDesc(owner);
     }
 
     @Transactional(readOnly = true)
     public long countSuppliers() {
-        return supplierRepository.count();
+        AppUser owner = authService.getWorkspaceOwner();
+        return supplierRepository.countByUser(owner);
     }
 
     @Transactional(readOnly = true)
     public Supplier getSupplierById(Long id) {
-        return supplierRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhà cung cấp"));
+        AppUser owner = authService.getWorkspaceOwner();
+        return supplierRepository.findByIdAndUser(id, owner)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhà cung cấp thuộc cửa hàng hiện tại"));
     }
 
     @Transactional
     public Supplier saveSupplier(Supplier supplier) {
         AppUser owner = authService.getWorkspaceOwner();
-
         supplier.setUser(owner);
-
         return supplierRepository.save(supplier);
     }
 

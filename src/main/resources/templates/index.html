@@ -24,27 +24,33 @@
 
         <nav class="side-menu">
             <a th:href="@{/dashboard}" class="active">📊 Dashboard</a>
-            <a th:href="@{/products}">📦 Sản phẩm</a>
-            <a th:href="@{/orders}">🧾 Đơn hàng</a>
-            <a th:href="@{/suppliers}">🏢 Nhà cung cấp</a>
-            <a th:href="@{/imports}">⬇️ Nhập hàng</a>
-            <a th:href="@{/reports/daily}">📈 Báo cáo</a>
+
+            <a th:if="${canViewProducts == true}" th:href="@{/products}">📦 Sản phẩm</a>
+            <a th:if="${canManageOrders == true}" th:href="@{/orders}">🧾 Đơn hàng</a>
+            <a th:if="${canManageSuppliers == true}" th:href="@{/suppliers}">🏢 Nhà cung cấp</a>
+            <a th:if="${canManageImports == true}" th:href="@{/imports}">⬇️ Nhập hàng</a>
+
+            <a th:if="${canInventoryCheck == true}" th:href="@{/inventory-checks}">🧮 Kiểm kê kho</a>
+            <a th:if="${canViewInventoryLogs == true}" th:href="@{/inventory-logs}">🕒 Lịch sử thao tác kho</a>
+
+            <a th:if="${canViewReports == true}" th:href="@{/reports/daily}">📈 Báo cáo</a>
+
             <a th:href="@{/shop}" target="_blank">🛍️ Cửa hàng</a>
 
-            <a th:if="${isOwner == true}" th:href="@{/shop-profile}">🏪 Cấu hình hóa đơn</a>
-            <a th:if="${isOwner == true
-           or (loginUser != null
-               and loginUser.role != null
-               and (#strings.equalsIgnoreCase(loginUser.role, 'OWNER')
-                    or #strings.equalsIgnoreCase(loginUser.role, 'ADMIN')
-                    or #strings.equalsIgnoreCase(loginUser.role, 'ROLE_OWNER')))}"
-               th:href="@{/shop-config}">
-                🛒 Cấu hình cửa hàng
-            </a>
-            <a th:href="@{/sheet/flex-import}">📄 Import Google Sheet</a>
-            <a th:if="${isOwner == true}" th:href="@{/account}">👥 Quản lý tài khoản</a>
+            <a th:if="${canManageShopConfig == true}" th:href="@{/shop-profile}">🏪 Cấu hình hóa đơn</a>
+            <a th:if="${canManageShopConfig == true}" th:href="@{/shop-config}">🛒 Cấu hình cửa hàng</a>
+
+            <a th:if="${canManageImports == true}" th:href="@{/sheet/flex-import}">📄 Import Google Sheet</a>
+
+            <a th:if="${canManageAccounts == true}" th:href="@{/account}">👥 Quản lý tài khoản</a>
+
+            <!-- Menu mới: chỉ Owner thấy -->
+            <a th:if="${canManageAccounts == true}" th:href="@{/admin/customers}">👤 Khách hàng</a>
+
             <a th:href="@{/account/change-password}">🔐 Đổi mật khẩu</a>
+
             <a th:if="${isEmployee == true}" th:href="@{/account/delete-my-account}">⚠️ Xóa tài khoản</a>
+
             <a th:href="@{/logout}" class="logout-link">🚪 Đăng xuất</a>
         </nav>
     </aside>
@@ -60,7 +66,8 @@
                     <b th:text="${loginUser != null && loginUser.fullName != null ? loginUser.fullName : 'User'}">User</b>
 
                     <span class="badge bg-primary" th:if="${isOwner == true}">Owner</span>
-                    <span class="badge bg-secondary" th:if="${isEmployee == true}">Employee</span>
+                    <span class="badge bg-info text-dark" th:if="${isStockStaff == true}">Nhân viên kho</span>
+                    <span class="badge bg-success" th:if="${isSaleStaff == true}">Nhân viên bán hàng</span>
                 </p>
 
                 <p class="text-muted mb-0">
@@ -69,8 +76,8 @@
             </div>
 
             <div class="header-actions">
-                <a th:href="@{/products/create}" class="btn btn-primary">+ Thêm sản phẩm</a>
-                <a th:href="@{/orders/create}" class="btn btn-light btn-soft">+ Tạo đơn</a>
+                <a th:if="${canManageProducts == true}" th:href="@{/products/create}" class="btn btn-primary">+ Thêm sản phẩm</a>
+                <a th:if="${canManageOrders == true}" th:href="@{/orders/create}" class="btn btn-light btn-soft">+ Tạo đơn</a>
             </div>
         </div>
 
