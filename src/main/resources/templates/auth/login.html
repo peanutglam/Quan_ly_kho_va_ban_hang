@@ -2,121 +2,251 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Đăng nhập Owner | SmartInventory</title>
+    <title>Đăng nhập quản trị - SmartInventory</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #fff1f5 0%, #ffffff 45%, #ffe4ec 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 430px;
+            background: #ffffff;
+            border-radius: 22px;
+            box-shadow: 0 18px 45px rgba(190, 80, 120, 0.16);
+            padding: 32px;
+            border: 1px solid #ffe1eb;
+        }
+
+        .brand-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #ff7aa8, #ffb3c9);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 24px rgba(255, 122, 168, 0.35);
+        }
+
+        .title {
+            font-weight: 700;
+            color: #333333;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777777;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #444444;
+            font-size: 14px;
+        }
+
+        .form-control {
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #ffd0de;
+        }
+
+        .form-control:focus {
+            border-color: #ff7aa8;
+            box-shadow: 0 0 0 0.2rem rgba(255, 122, 168, 0.18);
+        }
+
+        .btn-login {
+            border: none;
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, #ff6f9f, #ff9fbd);
+            box-shadow: 0 10px 22px rgba(255, 111, 159, 0.28);
+        }
+
+        .btn-login:hover {
+            color: white;
+            background: linear-gradient(135deg, #f45f91, #ff91b3);
+        }
+
+        .link-small {
+            color: #e74c85;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-small:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 14px;
+            font-size: 14px;
+        }
+
+        .input-group-text {
+            border-radius: 14px 0 0 14px;
+            border: 1px solid #ffd0de;
+            background: #fff7fa;
+            color: #e85b8f;
+        }
+
+        .input-group .form-control {
+            border-radius: 0 14px 14px 0;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 13px;
+            color: #888888;
+            margin-top: 18px;
+        }
+    </style>
 </head>
 
-<body class="login-page">
-
-<div class="login-shell">
+<body>
+<div class="login-wrapper">
     <div class="login-card">
 
-        <section class="login-left">
-            <div class="login-brand">
-                <div class="login-logo">SI</div>
-                <div>
-                    <h2>SmartInventory</h2>
-                    <p>Kho &amp; bán hàng mỹ phẩm</p>
+        <div class="brand-icon">
+            <i class="bi bi-box-seam"></i>
+        </div>
+
+        <h3 class="title">Đăng nhập quản trị</h3>
+        <p class="subtitle">
+            Dành cho Owner, nhân viên kho và nhân viên bán hàng
+        </p>
+
+        <div th:if="${errorMessage}" class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            <span th:text="${errorMessage}">Thông báo lỗi</span>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success">
+            <i class="bi bi-check-circle me-1"></i>
+            <span th:text="${successMessage}">Thông báo thành công</span>
+        </div>
+
+        <form method="post"
+              th:action="@{/login}"
+              autocomplete="off"
+              id="adminLoginForm">
+
+            <div class="mb-3">
+                <label class="form-label" for="username">Tên đăng nhập</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-person"></i>
+                    </span>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-control"
+                           placeholder="Nhập tên đăng nhập"
+                           autocomplete="off"
+                           autocorrect="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           readonly
+                           onfocus="this.removeAttribute('readonly');"
+                           required>
                 </div>
             </div>
 
-            <div class="login-left-content">
-                <span class="login-chip">🌸 Hệ thống quản lý cửa hàng mỹ phẩm</span>
-
-                <h1>Quản lý kho, đơn hàng và doanh thu trong một nơi</h1>
-
-                <ul class="login-feature-list">
-                    <li>📦 Theo dõi tồn kho, nhập hàng và hạn sử dụng</li>
-                    <li>🧾 Quản lý đơn hàng, hóa đơn và trạng thái giao hàng</li>
-                    <li>📈 Báo cáo doanh thu, vốn và lãi/lỗ cuối ngày</li>
-                    <li>🛍️ Có trang cửa hàng công khai cho khách mua hàng</li>
-                </ul>
+            <div class="mb-3">
+                <label class="form-label" for="password">Mật khẩu</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-lock"></i>
+                    </span>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-control"
+                           placeholder="Nhập mật khẩu"
+                           autocomplete="new-password"
+                           readonly
+                           onfocus="this.removeAttribute('readonly');"
+                           required>
+                </div>
             </div>
-        </section>
 
-        <section class="login-right">
-            <div class="login-form-wrap">
+            <button type="submit" class="btn btn-login w-100 mt-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i>
+                Đăng nhập
+            </button>
+        </form>
 
-                <div class="text-center mb-4">
-                    <div class="login-form-logo">SI</div>
-                    <div class="owner-pill mx-auto">🔐 Khu vực quản trị</div>
-                    <h3 class="login-title">Đăng nhập Owner</h3>
-                    <p class="login-subtitle">
-                        Dành cho chủ cửa hàng và nhân viên được Owner cấp tài khoản.
-                    </p>
-                </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <a th:href="@{/shop}" class="link-small">
+                <i class="bi bi-shop me-1"></i>
+                Về cửa hàng
+            </a>
 
-                <div class="login-note">
-                    Tài khoản <b>Owner</b> được cấp sẵn khi triển khai ứng dụng.
-                    Nhân viên đăng nhập bằng tài khoản do Owner tạo trong phần quản lý tài khoản.
-                </div>
+            <a th:href="@{/customer/login}" class="link-small">
+                Đăng nhập khách hàng
+            </a>
+        </div>
 
-                <div th:if="${successMessage}" class="alert alert-success mt-3" th:text="${successMessage}"></div>
-                <div th:if="${errorMessage}" class="alert alert-danger mt-3" th:text="${errorMessage}"></div>
-
-                <form th:action="@{/login}" method="post" class="mt-4">
-                    <div class="mb-3">
-                        <label class="form-label login-label">Tên đăng nhập</label>
-                        <input type="text"
-                               name="username"
-                               class="form-control login-input"
-                               placeholder="Ví dụ: owner hoặc tên nhân viên"
-                               required
-                               autocomplete="username">
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label login-label">Mật khẩu</label>
-                        <div class="password-field">
-                            <input type="password"
-                                   id="loginPassword"
-                                   name="password"
-                                   class="form-control login-input"
-                                   placeholder="Nhập mật khẩu"
-                                   required
-                                   autocomplete="current-password">
-                            <button type="button" class="password-toggle" onclick="togglePassword()">
-                                Hiện
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn login-submit-btn w-100">
-                        Đăng nhập hệ thống
-                    </button>
-                </form>
-
-                <div class="login-footer-text">
-                    Nếu chưa có tài khoản, vui lòng liên hệ Owner hoặc người quản trị hệ thống.
-                </div>
-
-                <div class="login-bottom-links">
-                    <a th:href="@{/shop}" class="login-link-secondary">
-                        ← Quay về cửa hàng công khai
-                    </a>
-                    <a th:href="@{/customer/login}" class="login-link-secondary">
-                        Đăng nhập khách hàng
-                    </a>
-                </div>
-
-            </div>
-        </section>
-
+        <div class="footer-note">
+            SmartInventory - Quản lý kho và bán hàng đa nền tảng
+        </div>
     </div>
 </div>
 
 <script>
-    function togglePassword() {
-        const input = document.getElementById('loginPassword');
-        const button = document.querySelector('.password-toggle');
-        if (!input || !button) return;
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        button.textContent = isPassword ? 'Ẩn' : 'Hiện';
+    function clearLoginForm() {
+        const inputs = document.querySelectorAll("input[name='username'], input[name='password']");
+
+        inputs.forEach(function (input) {
+            input.value = "";
+            input.setAttribute("readonly", "readonly");
+        });
     }
+
+    window.addEventListener("load", function () {
+        clearLoginForm();
+    });
+
+    window.addEventListener("pageshow", function () {
+        clearLoginForm();
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("adminLoginForm");
+
+        if (form) {
+            form.setAttribute("autocomplete", "off");
+        }
+    });
 </script>
 
 </body>

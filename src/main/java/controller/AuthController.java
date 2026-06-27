@@ -23,16 +23,15 @@ public class AuthController {
         this.customerAccountService = customerAccountService;
     }
 
+    /*
+     * Trang đăng nhập quản trị.
+     * Mỗi lần mở /login sẽ xóa session cũ để không tự vào lại tài khoản trước.
+     */
     @GetMapping("/login")
     public String loginForm(HttpServletRequest request,
                             HttpServletResponse response) {
         disableCache(response);
-
-        HttpSession session = request.getSession(false);
-
-        if (session != null && session.getAttribute(AuthService.SESSION_USER_ID) != null) {
-            return redirectAfterAdminLogin();
-        }
+        clearAllLoginSessions(request);
 
         return "auth/login";
     }
@@ -55,20 +54,13 @@ public class AuthController {
 
     /*
      * Trang đăng nhập khách hàng.
-     * Không được kiểm tra AuthService.SESSION_USER_ID ở đây,
-     * vì nếu session cũ còn USER_ID nhưng không có CUSTOMER_USER_ID
-     * sẽ gây vòng lặp /customer/login <-> /customer/account.
+     * Mỗi lần mở /customer/login cũng xóa session cũ.
      */
     @GetMapping("/customer/login")
     public String customerLoginForm(HttpServletRequest request,
                                     HttpServletResponse response) {
         disableCache(response);
-
-        HttpSession session = request.getSession(false);
-
-        if (session != null && session.getAttribute(CustomerAccountService.SESSION_CUSTOMER_ID) != null) {
-            return "redirect:/customer/account";
-        }
+        clearAllLoginSessions(request);
 
         return "auth/customer-login";
     }
@@ -85,11 +77,6 @@ public class AuthController {
             AppUser customer = customerAccountService.login(username, password);
 
             HttpSession session = request.getSession(true);
-
-            /*
-             * Xóa session quản trị cũ nếu có.
-             * Khách hàng dùng session riêng CUSTOMER_USER_ID.
-             */
             session.removeAttribute(AuthService.SESSION_USER_ID);
 
             customerAccountService.saveCustomerToSession(request, customer);
@@ -107,12 +94,6 @@ public class AuthController {
     @GetMapping("/customer/register")
     public String customerRegisterForm(HttpServletRequest request,
                                        Model model) {
-        HttpSession session = request.getSession(false);
-
-        if (session != null && session.getAttribute(CustomerAccountService.SESSION_CUSTOMER_ID) != null) {
-            return "redirect:/customer/account";
-        }
-
         if (!model.containsAttribute("user")) {
             model.addAttribute("user", new AppUser());
         }
@@ -205,6 +186,7 @@ public class AuthController {
                          HttpServletResponse response) {
         authService.logout(request, response);
         customerAccountService.logout(request);
+        clearAllLoginSessions(request);
         disableCache(response);
 
         return "redirect:/shop";
@@ -221,6 +203,16 @@ public class AuthController {
         }
 
         return "redirect:/dashboard";
+    }
+
+    private void clearAllLoginSessions(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+
+        if (session != null) {
+            session.removeAttribute(AuthService.SESSION_USER_ID);
+            session.removeAttribute(CustomerAccountService.SESSION_CUSTOMER_ID);
+            session.invalidate();
+        }
     }
 
     private String normalizeRole(String role) {

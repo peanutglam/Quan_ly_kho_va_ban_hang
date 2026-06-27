@@ -2,40 +2,258 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Đăng nhập khách hàng</title>
+    <title>Đăng nhập khách hàng - SmartInventory</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #fff1f5 0%, #ffffff 45%, #ffe4ec 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 430px;
+            background: #ffffff;
+            border-radius: 22px;
+            box-shadow: 0 18px 45px rgba(190, 80, 120, 0.16);
+            padding: 32px;
+            border: 1px solid #ffe1eb;
+        }
+
+        .brand-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #ff7aa8, #ffb3c9);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 24px rgba(255, 122, 168, 0.35);
+        }
+
+        .title {
+            font-weight: 700;
+            color: #333333;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777777;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #444444;
+            font-size: 14px;
+        }
+
+        .form-control {
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #ffd0de;
+        }
+
+        .form-control:focus {
+            border-color: #ff7aa8;
+            box-shadow: 0 0 0 0.2rem rgba(255, 122, 168, 0.18);
+        }
+
+        .btn-login {
+            border: none;
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, #ff6f9f, #ff9fbd);
+            box-shadow: 0 10px 22px rgba(255, 111, 159, 0.28);
+        }
+
+        .btn-login:hover {
+            color: white;
+            background: linear-gradient(135deg, #f45f91, #ff91b3);
+        }
+
+        .link-small {
+            color: #e74c85;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-small:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 14px;
+            font-size: 14px;
+        }
+
+        .input-group-text {
+            border-radius: 14px 0 0 14px;
+            border: 1px solid #ffd0de;
+            background: #fff7fa;
+            color: #e85b8f;
+        }
+
+        .input-group .form-control {
+            border-radius: 0 14px 14px 0;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 13px;
+            color: #888888;
+            margin-top: 18px;
+        }
+    </style>
 </head>
 
-<body class="app-bg">
-<div class="page-container" style="max-width: 620px;">
-    <section class="page-card">
-        <h2 class="fw-bold mb-2">Đăng nhập khách hàng</h2>
-        <p class="text-muted">Đăng nhập để xem lịch sử đơn hàng và trạng thái đơn.</p>
+<body>
+<div class="login-wrapper">
+    <div class="login-card">
 
-        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div class="brand-icon">
+            <i class="bi bi-bag-heart"></i>
+        </div>
 
-        <form method="post" th:action="@{/customer/login}">
+        <h3 class="title">Đăng nhập khách hàng</h3>
+        <p class="subtitle">
+            Đăng nhập để xem tài khoản, thông tin cá nhân và đơn hàng của bạn
+        </p>
+
+        <div th:if="${errorMessage}" class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            <span th:text="${errorMessage}">Thông báo lỗi</span>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success">
+            <i class="bi bi-check-circle me-1"></i>
+            <span th:text="${successMessage}">Thông báo thành công</span>
+        </div>
+
+        <form method="post"
+              th:action="@{/customer/login}"
+              autocomplete="off"
+              id="customerLoginForm">
+
             <div class="mb-3">
-                <label class="form-label">Tên đăng nhập</label>
-                <input class="form-control" name="username" required autocomplete="username">
+                <label class="form-label" for="username">Tên đăng nhập</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-person"></i>
+                    </span>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-control"
+                           placeholder="Nhập tên đăng nhập"
+                           autocomplete="off"
+                           autocorrect="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           readonly
+                           onfocus="this.removeAttribute('readonly');"
+                           required>
+                </div>
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <input class="form-control" type="password" name="password" required autocomplete="current-password">
+                <label class="form-label" for="password">Mật khẩu</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-lock"></i>
+                    </span>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-control"
+                           placeholder="Nhập mật khẩu"
+                           autocomplete="new-password"
+                           readonly
+                           onfocus="this.removeAttribute('readonly');"
+                           required>
+                </div>
             </div>
 
-            <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
+            <button type="submit" class="btn btn-login w-100 mt-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i>
+                Đăng nhập
+            </button>
         </form>
 
-        <div class="mt-3 d-flex justify-content-between">
-            <a th:href="@{/shop}">← Về cửa hàng</a>
-            <a th:href="@{/customer/register}">Đăng ký tài khoản</a>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <a th:href="@{/shop}" class="link-small">
+                <i class="bi bi-shop me-1"></i>
+                Về cửa hàng
+            </a>
+
+            <a th:href="@{/customer/register}" class="link-small">
+                Đăng ký tài khoản
+            </a>
         </div>
-    </section>
+
+        <div class="text-center mt-2">
+            <a th:href="@{/login}" class="link-small">
+                Đăng nhập quản trị
+            </a>
+        </div>
+
+        <div class="footer-note">
+            SmartInventory - Cửa hàng mỹ phẩm trực tuyến
+        </div>
+    </div>
 </div>
+
+<script>
+    function clearLoginForm() {
+        const inputs = document.querySelectorAll("input[name='username'], input[name='password']");
+
+        inputs.forEach(function (input) {
+            input.value = "";
+            input.setAttribute("readonly", "readonly");
+        });
+    }
+
+    window.addEventListener("load", function () {
+        clearLoginForm();
+    });
+
+    window.addEventListener("pageshow", function () {
+        clearLoginForm();
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("customerLoginForm");
+
+        if (form) {
+            form.setAttribute("autocomplete", "off");
+        }
+    });
+</script>
+
 </body>
 </html>

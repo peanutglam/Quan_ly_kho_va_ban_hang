@@ -186,9 +186,11 @@ public class AuthService {
         getCurrentUser();
         return getCanonicalOwner();
     }
+
     public AppUser getSystemOwner() {
         return getCanonicalOwner();
     }
+
     public AppUser getWorkspaceOwner(AppUser user) {
         if (user == null) {
             throw new IllegalArgumentException("Bạn cần đăng nhập");
@@ -474,11 +476,18 @@ public class AuthService {
         AppUser owner = getWorkspaceOwner();
 
         List<AppUser> users = new ArrayList<>();
-        users.add(owner);
+
+        if (Boolean.TRUE.equals(owner.getActive())) {
+            users.add(owner);
+        }
 
         for (AppUser user : userRepository.findByOwnerOrderByIdDesc(owner)) {
             String role = normalizeRole(user.getRole());
-            if (AppUser.ROLE_STAFF.equals(role) || AppUser.ROLE_SALE.equals(role)) {
+
+            boolean isEmployee = AppUser.ROLE_STAFF.equals(role) || AppUser.ROLE_SALE.equals(role);
+            boolean isActive = !Boolean.FALSE.equals(user.getActive());
+
+            if (isEmployee && isActive) {
                 users.add(user);
             }
         }
@@ -520,13 +529,27 @@ public class AuthService {
     public void deleteEmployee(Long employeeId) {
         requireRole(AppUser.ROLE_OWNER);
 
+        if (employeeId == null) {
+            throw new IllegalArgumentException("Tài khoản nhân viên không hợp lệ.");
+        }
+
         AppUser owner = getWorkspaceOwner();
 
         AppUser employee = userRepository.findByIdAndOwner(employeeId, owner)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản nhân viên thuộc cửa hàng"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản nhân viên thuộc cửa hàng của bạn."));
 
-        if (AppUser.ROLE_OWNER.equals(normalizeRole(employee.getRole()))) {
-            throw new IllegalArgumentException("Không thể xóa tài khoản Owner chính tại chức năng này");
+        String role = normalizeRole(employee.getRole());
+
+        if (AppUser.ROLE_OWNER.equals(role)) {
+            throw new IllegalArgumentException("Không thể xóa tài khoản Owner chính tại chức năng này.");
+        }
+
+        if (AppUser.ROLE_CUSTOMER.equals(role)) {
+            throw new IllegalArgumentException("Đây là tài khoản khách hàng, không phải tài khoản nhân viên.");
+        }
+
+        if (!AppUser.ROLE_STAFF.equals(role) && !AppUser.ROLE_SALE.equals(role)) {
+            throw new IllegalArgumentException("Chỉ được xóa tài khoản nhân viên kho hoặc nhân viên bán hàng.");
         }
 
         employee.setActive(false);
